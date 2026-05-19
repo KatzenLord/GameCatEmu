@@ -2,7 +2,30 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include "cartridge/Cartridge.h"
+
 int main(int argc, char *argv[]) {
+
+    if (argc < 2) {
+        std::cerr << "Usage: GameCatEmu <rom.gb>" << std::endl;
+        return 1;
+    }
+
+    Cartridge cartridge;
+
+    if (!cartridge.loadFromFile(argv[1])) {
+        return 1;
+    }
+
+    const CartridgeHeader& header = cartridge.getHeader();
+
+    std::cout << "ROM Loaded" << std::endl;
+    std::cout << "==================" << std::endl;
+    std::cout << "Title: " << header.title << std::endl;
+    std::cout << "Cartridge Type: 0x" << std::hex << static_cast<int>(header.cartridgeType) << std::dec << " -> " << header.cartridgeTypeString << std::endl;
+    std::cout << "ROM Size: 0x" << std::hex << static_cast<int>(header.romSize) << std::dec << " -> " << header.romSizeString << std::endl;
+    std::cout << "RAM Size: 0x" << std::hex << static_cast<int>(header.ramSize) << std::dec << " -> " << header.ramSizeString << std::endl;
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cout << "SDL could not be Initialized: " << SDL_GetError() << std::endl;
         return 1;
@@ -15,7 +38,7 @@ int main(int argc, char *argv[]) {
 
 
     SDL_Window* window{SDL_CreateWindow(
-        "GameCat Emu",
+        ("GameCat Emu - "+header.title).c_str(),
         GB_WIDTH*SCALE,
         GB_HEIGHT*SCALE,
         SDL_WINDOW_RESIZABLE

@@ -46,6 +46,7 @@ void Cartridge::parseHeader() {
     header.romSize = rom[0x0148];
     header.romSizeString = getRomSizeString(header.romSize);
     header.ramSize = rom[0x0149];
+    header.ramSizeString = getRamSizeString(header.ramSize);
     header.destinationCode = rom[0x014A];
     header.headerChecksum = rom[0x014D];
 
