@@ -3,4 +3,4 @@ project(GameCatEmu)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(GameCatEmu main.cpp)
+add_executable(GameCatEmu src/main.cpp)
