@@ -1,2 +1,9 @@
-build
-.idea
+build/
+cmake-build-*/
+.vscode/
+.idea/
+*.o
+*.a
+*.so
+*.exe
+roms/
