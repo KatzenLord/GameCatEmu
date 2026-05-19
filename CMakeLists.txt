@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 
 find_package(SDL3 REQUIRED CONFIG)
 
-add_executable(GameCatEmu src/main.cpp)
+add_executable(GameCatEmu
+        src/main.cpp
+        src/cartridge/Cartridge.cpp
+)
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)
