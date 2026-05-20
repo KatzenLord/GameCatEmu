@@ -88,3 +88,15 @@ void Bus::write8(uint16_t address, uint8_t data) {
         return;
     }
 }
+
+uint16_t Bus::read16(const uint16_t address) const {
+    const uint8_t low = read8(address);
+    const uint8_t high = read8(address + 1);
+
+    return static_cast<uint16_t>(low) | static_cast<uint16_t>(high << 8);
+}
+
+void Bus::write16(const uint16_t address, uint16_t data) {
+    write8(address, static_cast<uint8_t>(data & 0x00FF));
+    write8(address + 1, static_cast<uint8_t>(data >> 8) & 0x00FF);
+}
