@@ -10,6 +10,8 @@ add_executable(GameCatEmu
         src/cartridge/Cartridge.cpp
         src/bus/Bus.cpp
         src/bus/Bus.h
+        src/cpu/CPU.cpp
+        src/cpu/CPU.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)

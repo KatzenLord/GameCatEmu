@@ -93,7 +93,7 @@ uint16_t Bus::read16(const uint16_t address) const {
     const uint8_t low = read8(address);
     const uint8_t high = read8(address + 1);
 
-    return static_cast<uint16_t>(low) | static_cast<uint16_t>(high << 8);
+    return static_cast<uint16_t>(low) | (static_cast<uint16_t>(high) << 8);
 }
 
 void Bus::write16(const uint16_t address, uint16_t data) {
