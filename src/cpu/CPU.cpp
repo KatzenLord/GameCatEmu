@@ -9,6 +9,7 @@
 
 CPU::CPU(Bus &bus)
     : bus(bus){
+    reset();
 }
 
 void CPU::reset() {
@@ -41,12 +42,15 @@ int CPU::step() {
     if ((opcode & 0xC7) == 0x06)
         return decodeRegImmediate(opcode);
 
+    if ((opcode & 0xF8) == 0xA8)
+        return xor_a_reg(opcode);
+
     switch (opcode) {
         case 0x00: return nop();
-        case 0xC3: jp_u16();
-        case 0xCB: stepCB();
+        case 0xC3: return jp_u16();
+        case 0xCB: return stepCB();
         default:
-            unimplemented(opcode, oldPC);
+            return unimplemented(opcode, oldPC);
     }
 }
 
@@ -65,7 +69,7 @@ uint8_t CPU::read8(uint16_t address) const {
     return bus.read8(address);
 }
 
-void CPU::write8(uint16_t address, uint8_t data) {
+void CPU::write8(uint16_t address, uint8_t data) const {
     bus.write8(address, data);
 }
 
@@ -117,14 +121,14 @@ int CPU::jp_u16() {
 }
 
 int CPU::xor_a_reg(uint8_t opcode) {
-    uint8_t reg = (opcode >> 3) & 0x07;
+    uint8_t reg = opcode & 0x07;
     A ^= readReg8(reg);
     setFlag(Flag::Z, A == 0);
     setFlag(Flag::N, false);
     setFlag(Flag::H,false);
     setFlag(Flag::C, false);
 
-    return 4;
+    return reg == 6 ? 8 : 4;
 }
 
 int CPU::stepCB() {

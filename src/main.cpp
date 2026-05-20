@@ -3,7 +3,9 @@
 #include <SDL3/SDL_main.h>
 #include <iomanip>
 
+#include "bus/Bus.h"
 #include "cartridge/Cartridge.h"
+#include "cpu/CPU.h"
 
 int main(int argc, char *argv[]) {
 
@@ -26,6 +28,16 @@ int main(int argc, char *argv[]) {
     std::cout << "Cartridge Type: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.cartridgeType) << std::dec << " -> " << header.cartridgeTypeString << std::endl;
     std::cout << "ROM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.romSize) << std::dec << " -> " << header.romSizeString << std::endl;
     std::cout << "RAM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.ramSize) << std::dec << " -> " << header.ramSizeString << std::endl;
+
+    Bus bus(cartridge);
+    CPU cpu(bus);
+
+    for (int i = 0; i < 20; ++i) {
+        int cycles = cpu.step();
+
+        std::cout << "Step " << i
+            << " cycles=" << cycles << std::endl;
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cout << "SDL could not be Initialized: " << SDL_GetError() << std::endl;

@@ -44,7 +44,7 @@ private:
     uint16_t fetch16();
 
     uint8_t read8(uint16_t address) const;
-    void write8(uint16_t address, uint8_t value);
+    void write8(uint16_t address, uint8_t value) const;
 
     uint16_t getAF() const;
     uint16_t getBC() const;
