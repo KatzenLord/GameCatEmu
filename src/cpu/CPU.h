@@ -15,6 +15,13 @@ public:
     void reset();
     int step();
 private:
+    enum class Flag : uint8_t {
+        Z = 0x80,
+        N = 0x40,
+        H = 0x20,
+        C = 0x10,
+    };
+
     Bus& bus;
 
     uint8_t A = 0;
@@ -49,22 +56,24 @@ private:
     void setDE(uint16_t value);
     void setHL(uint16_t value);
 
-    bool getZ() const;
-    bool getN() const;
-    bool getH() const;
-    bool getC() const;
-
-    void setZ(bool value);
-    void setN(bool value);
-    void setH(bool value);
-    void setC(bool value);
+    bool getFlag(Flag flag) const;
+    void setFlag(Flag flag, bool value);
 
     int stepCB();
 
+    uint8_t readReg8(uint8_t code) const;
+    void writeReg8(uint8_t code, uint8_t value);
+
+    int decodeLdRegReg(uint8_t opcode);
+    int decodeRegImmediate(uint8_t opcode);
+    int decodeAluRegister(uint8_t opcode);
+
     int nop();
-    int ld_r_u8(uint8_t& reg);
+    int halt();
     int jp_u16();
-    int xor_a();
+    int xor_a_reg(uint8_t opcode);
+
+    int unimplemented(uint8_t opcode, uint16_t oldPC);
 };
 
 #endif //GAMECATEMU_CPU_H
