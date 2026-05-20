@@ -8,6 +8,8 @@ find_package(SDL3 REQUIRED CONFIG)
 add_executable(GameCatEmu
         src/main.cpp
         src/cartridge/Cartridge.cpp
+        src/bus/Bus.cpp
+        src/bus/Bus.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)
