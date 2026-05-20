@@ -52,7 +52,7 @@ void Cartridge::parseHeader() {
 
 }
 
-uint8_t Cartridge::read(uint8_t addr) const {
+uint8_t Cartridge::read(uint16_t addr) const {
     if (addr < rom.size()) {
         return rom[addr];
     }

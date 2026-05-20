@@ -35,7 +35,7 @@ public:
     static std::string getRomSizeString(uint8_t type);
     static std::string getRamSizeString(uint8_t type);
 
-    uint8_t read(uint8_t addr) const;
+    uint8_t read(uint16_t addr) const;
     void write(uint8_t addr, uint8_t data);
 
     const CartridgeHeader& getHeader() const {

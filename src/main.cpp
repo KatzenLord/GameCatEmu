@@ -1,6 +1,7 @@
 #include <iostream>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <iomanip>
 
 #include "cartridge/Cartridge.h"
 
@@ -22,9 +23,9 @@ int main(int argc, char *argv[]) {
     std::cout << "ROM Loaded" << std::endl;
     std::cout << "==================" << std::endl;
     std::cout << "Title: " << header.title << std::endl;
-    std::cout << "Cartridge Type: 0x" << std::hex << static_cast<int>(header.cartridgeType) << std::dec << " -> " << header.cartridgeTypeString << std::endl;
-    std::cout << "ROM Size: 0x" << std::hex << static_cast<int>(header.romSize) << std::dec << " -> " << header.romSizeString << std::endl;
-    std::cout << "RAM Size: 0x" << std::hex << static_cast<int>(header.ramSize) << std::dec << " -> " << header.ramSizeString << std::endl;
+    std::cout << "Cartridge Type: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.cartridgeType) << std::dec << " -> " << header.cartridgeTypeString << std::endl;
+    std::cout << "ROM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.romSize) << std::dec << " -> " << header.romSizeString << std::endl;
+    std::cout << "RAM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.ramSize) << std::dec << " -> " << header.ramSizeString << std::endl;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cout << "SDL could not be Initialized: " << SDL_GetError() << std::endl;
