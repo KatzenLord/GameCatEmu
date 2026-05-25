@@ -14,6 +14,13 @@ public:
 
     void reset();
     int step();
+
+    bool isHalted() const {
+        return halted;
+    }
+    bool isStopped() const {
+        return stopped;
+    }
 private:
     enum class Flag : uint8_t {
         Z = 0x80,
@@ -64,8 +71,13 @@ private:
     uint8_t readReg8(uint8_t code) const;
     void writeReg8(uint8_t code, uint8_t value);
 
+    void push16(uint16_t value);
+    uint16_t pop16();
+
     int decodeLdRegReg(uint8_t opcode);
     int decodeLdReg16(uint8_t opcode);
+    int decodeDecReg8(uint8_t opcode);
+    int decodeIncReg8(uint8_t opcode);
     int decodeRegImmediate(uint8_t opcode);
     int decodeAluRegister(uint8_t opcode);
 
@@ -78,9 +90,12 @@ private:
     int ld_a16_a();
     int cp_u8();
     int jp_nz_i8();
+    int rst(uint16_t address);
     int xor_a_reg(uint8_t opcode);
 
     int unimplemented(uint8_t opcode, uint16_t oldPC);
+
+    void printTrace(uint16_t oldPC, uint8_t opcode) const;
 };
 
 #endif //GAMECATEMU_CPU_H

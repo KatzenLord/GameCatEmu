@@ -4,6 +4,7 @@
 
 #include "CPU.h"
 
+#include <charconv>
 #include <iomanip>
 #include <iostream>
 
@@ -33,12 +34,19 @@ int CPU::step() {
     if (halted) {
         return 4;
     }
-    uint16_t oldPC = PC;
-    uint8_t opcode = fetch8();
+    const uint16_t oldPC = PC;
+    const uint8_t opcode = fetch8();
 
-    if ((opcode & 0xCF) == 0x01) {
+    printTrace(oldPC, opcode);
+
+    if ((opcode & 0xCF) == 0x01)
         return decodeLdReg16(opcode);
-    }
+
+    if ((opcode & 0xC7) == 0x05)
+        return decodeDecReg8(opcode);
+
+    if ((opcode & 0xC7) == 0x04)
+        return decodeIncReg8(opcode);
 
     if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
         return decodeLdRegReg(opcode);
@@ -48,6 +56,11 @@ int CPU::step() {
 
     if ((opcode & 0xF8) == 0xA8)
         return xor_a_reg(opcode);
+
+    if ((opcode & 0xC7) == 0xC7) {
+        uint16_t addr = opcode & 0x38;
+        return rst(addr);
+    }
 
 
     switch (opcode) {
@@ -70,8 +83,8 @@ uint8_t CPU::fetch8() {
 }
 
 uint16_t CPU::fetch16() {
-    uint8_t low = fetch8();
-    uint8_t high = fetch8();
+    const uint8_t low = fetch8();
+    const uint8_t high = fetch8();
 
     return static_cast<int>(low) | (static_cast<int>(high) << 8);
 }
@@ -82,6 +95,24 @@ uint8_t CPU::read8(uint16_t address) const {
 
 void CPU::write8(uint16_t address, uint8_t data) const {
     bus.write8(address, data);
+}
+
+void CPU::push16(uint16_t value) {
+    SP--;
+    write8(SP, static_cast<uint8_t>((value >> 8) & 0xFF));
+
+    SP--;
+    write8(SP, static_cast<uint8_t>(value & 0xFF));
+}
+
+uint16_t CPU::pop16() {
+    const uint8_t low = read8(SP);
+    SP++;
+
+    const uint8_t high = read8(SP);
+    SP++;
+
+    return static_cast<uint16_t>(low) | (static_cast<uint16_t>(high) << 8);
 }
 
 uint16_t CPU::getAF() const {
@@ -126,32 +157,32 @@ int CPU::nop() {
 }
 
 int CPU::jp_u16() {
-    uint16_t addr = fetch16();
+    const uint16_t addr = fetch16();
     PC = addr;
     return 16;
 }
 
 int CPU::ld_hld_a() {
-    uint16_t addr = getHL();
+    const uint16_t addr = getHL();
     write8(addr, A);
     setHL(addr - 1);
     return 8;
 }
 
 int CPU::ldh_a8_a() {
-    uint8_t offset = fetch8();
+    const uint8_t offset = fetch8();
     write8(0xFF00 - offset, A);
     return 12;
 }
 
 int CPU::ldh_a_a8() {
-    uint8_t offset = fetch8();
+    const uint8_t offset = fetch8();
     A = read8(0xFF00 - offset);
     return 12;
 }
 
 int CPU::ld_a16_a() {
-    uint16_t addr = fetch16();
+    const uint16_t addr = fetch16();
     write8(addr, A);
     return 16;
 }
@@ -166,13 +197,19 @@ int CPU::cp_u8() {
 }
 
 int CPU::jp_nz_i8() {
-    int8_t offset = static_cast<int8_t>(fetch8());
+    const auto offset = static_cast<int8_t>(fetch8());
 
     if (!getFlag(Flag::Z)) {
         PC = static_cast<uint8_t>(PC + offset);
         return 12;
     }
     return 8;
+}
+
+int CPU::rst(uint16_t address) {
+    push16(address);
+    PC = address;
+    return 16;
 }
 
 int CPU::xor_a_reg(uint8_t opcode) {
@@ -202,7 +239,7 @@ bool CPU::getFlag(Flag flag) const {
 }
 
 void CPU::setFlag(Flag flag, bool value) {
-    const uint8_t mask = static_cast<uint8_t>(flag);
+    const auto mask = static_cast<uint8_t>(flag);
 
     if (value) {
         F |= mask;
@@ -244,10 +281,10 @@ void CPU::writeReg8(uint8_t code, uint8_t value) {
 }
 
 int CPU::decodeLdRegReg(uint8_t opcode) {
-    uint8_t dest = (opcode >> 3) & 0x07;
-    uint8_t src = opcode & 0x07;
+    const uint8_t dest = (opcode >> 3) & 0x07;
+    const uint8_t src = opcode & 0x07;
 
-    uint8_t value = readReg8(dest);
+    const uint8_t value = readReg8(dest);
     writeReg8(dest, value);
 
     if (dest == 6 || src == 6) {
@@ -265,9 +302,39 @@ int CPU::decodeLdReg16(uint8_t opcode) {
         case 1: setDE(value); break;
         case 2: setHL(value); break;
         case 3: SP = value; break;
-        default: return 0xFF;
+        default: break;
     }
     return 12;
+}
+
+int CPU::decodeDecReg8(uint8_t opcode) {
+    const uint8_t reg = (opcode >> 3) & 0x07;
+
+    const uint8_t oldVal = readReg8(reg);
+    const auto newVal = static_cast<uint8_t>(oldVal - 1);
+
+    writeReg8(reg, newVal);
+
+    setFlag(Flag::Z, newVal == 0);
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, (oldVal & 0x0F) == 0x00);
+
+    return reg == 6 ? 8 : 4;
+}
+
+int CPU::decodeIncReg8(uint8_t opcode) {
+    const uint8_t reg = (opcode >> 3) & 0x07;
+
+    const uint8_t oldVal = readReg8(reg);
+    const auto newVal = static_cast<uint8_t>(oldVal + 1);
+
+    writeReg8(reg, newVal);
+
+    setFlag(Flag::Z, newVal == 0);
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, (oldVal & 0x0F) == 0x00);
+
+    return reg == 6 ? 8 : 4;
 }
 
 int CPU::decodeRegImmediate(uint8_t opcode) {
@@ -299,6 +366,18 @@ int CPU::unimplemented(uint8_t opcode, uint16_t oldPC) {
 
     halted = true;
     return 4;
+}
+
+void CPU::printTrace(uint16_t oldPC, uint8_t opcode) const {
+    std::cout << "PC=" << std::hex << std::uppercase
+          << std::setw(4) << std::setfill('0') << oldPC
+          << " OP=" << std::setw(2) << static_cast<int>(opcode)
+          << " AF=" << std::setw(4) << getAF()
+          << " BC=" << std::setw(4) << getBC()
+          << " DE=" << std::setw(4) << getDE()
+          << " HL=" << std::setw(4) << getHL()
+          << " SP=" << std::setw(4) << SP
+          << std::dec << "\n";
 }
 
 int CPU::halt() {
