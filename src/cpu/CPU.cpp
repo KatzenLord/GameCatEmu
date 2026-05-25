@@ -36,6 +36,10 @@ int CPU::step() {
     uint16_t oldPC = PC;
     uint8_t opcode = fetch8();
 
+    if ((opcode & 0xCF) == 0x01) {
+        return decodeLdReg16(opcode);
+    }
+
     if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
         return decodeLdRegReg(opcode);
 
@@ -45,10 +49,17 @@ int CPU::step() {
     if ((opcode & 0xF8) == 0xA8)
         return xor_a_reg(opcode);
 
+
     switch (opcode) {
         case 0x00: return nop();
+        case 0x20: return jp_nz_i8();
+        case 0x32: return ld_hld_a();
         case 0xC3: return jp_u16();
         case 0xCB: return stepCB();
+        case 0xE0: return ldh_a8_a();
+        case 0xEA: return ld_a16_a();
+        case 0xF0: return ldh_a_a8();
+        case 0xFE: return cp_u8();
         default:
             return unimplemented(opcode, oldPC);
     }
@@ -120,6 +131,50 @@ int CPU::jp_u16() {
     return 16;
 }
 
+int CPU::ld_hld_a() {
+    uint16_t addr = getHL();
+    write8(addr, A);
+    setHL(addr - 1);
+    return 8;
+}
+
+int CPU::ldh_a8_a() {
+    uint8_t offset = fetch8();
+    write8(0xFF00 - offset, A);
+    return 12;
+}
+
+int CPU::ldh_a_a8() {
+    uint8_t offset = fetch8();
+    A = read8(0xFF00 - offset);
+    return 12;
+}
+
+int CPU::ld_a16_a() {
+    uint16_t addr = fetch16();
+    write8(addr, A);
+    return 16;
+}
+
+int CPU::cp_u8() {
+    uint8_t val = fetch8();
+    setFlag(Flag::Z, A == val);
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, (A & 0x0F) < (val & 0x0F));
+    setFlag(Flag::C, A < val);
+    return 8;
+}
+
+int CPU::jp_nz_i8() {
+    int8_t offset = static_cast<int8_t>(fetch8());
+
+    if (!getFlag(Flag::Z)) {
+        PC = static_cast<uint8_t>(PC + offset);
+        return 12;
+    }
+    return 8;
+}
+
 int CPU::xor_a_reg(uint8_t opcode) {
     uint8_t reg = opcode & 0x07;
     A ^= readReg8(reg);
@@ -147,7 +202,7 @@ bool CPU::getFlag(Flag flag) const {
 }
 
 void CPU::setFlag(Flag flag, bool value) {
-    uint8_t mask = static_cast<uint8_t>(flag);
+    const uint8_t mask = static_cast<uint8_t>(flag);
 
     if (value) {
         F |= mask;
@@ -199,6 +254,20 @@ int CPU::decodeLdRegReg(uint8_t opcode) {
         return 8;
     }
     return 4;
+}
+
+int CPU::decodeLdReg16(uint8_t opcode) {
+    uint8_t regPair = (opcode >> 4) & 0x03;
+    uint16_t value = fetch16();
+
+    switch (regPair) {
+        case 0: setBC(value); break;
+        case 1: setDE(value); break;
+        case 2: setHL(value); break;
+        case 3: SP = value; break;
+        default: return 0xFF;
+    }
+    return 12;
 }
 
 int CPU::decodeRegImmediate(uint8_t opcode) {

@@ -65,12 +65,19 @@ private:
     void writeReg8(uint8_t code, uint8_t value);
 
     int decodeLdRegReg(uint8_t opcode);
+    int decodeLdReg16(uint8_t opcode);
     int decodeRegImmediate(uint8_t opcode);
     int decodeAluRegister(uint8_t opcode);
 
     int nop();
     int halt();
     int jp_u16();
+    int ld_hld_a();
+    int ldh_a8_a();
+    int ldh_a_a8();
+    int ld_a16_a();
+    int cp_u8();
+    int jp_nz_i8();
     int xor_a_reg(uint8_t opcode);
 
     int unimplemented(uint8_t opcode, uint16_t oldPC);
