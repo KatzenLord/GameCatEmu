@@ -47,33 +47,33 @@ int CPU::step() {
     if ((opcode & 0xCF) == 0x01)
         return decodeLdReg16(opcode);
 
-    if ((opcode & 0xC7) == 0x05)
-        return decodeDecReg8(opcode);
+    if ((opcode & 0xCF) == 0x03)
+        return decodeIncReg16(opcode);
 
     if ((opcode & 0xC7) == 0x04)
         return decodeIncReg8(opcode);
 
-    if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
-        return decodeLdRegReg(opcode);
+    if ((opcode & 0xC7) == 0x05)
+        return decodeDecReg8(opcode);
 
     if ((opcode & 0xC7) == 0x06)
         return decodeRegImmediate(opcode);
 
-    if ((opcode & 0xF8) == 0xA8)
-        return xor_a_reg(opcode);
-
-    if ((opcode & 0xCF) == 0x03)
-        return decodeIncReg16(opcode);
+    if ((opcode & 0xE7) == 0x20)
+        return decodeJrCondition(opcode);
 
     if ((opcode & 0xCF) == 0x0B)
         return decodeDecReg16(opcode);
 
-    if ((opcode & 0xE7) == 0x20)
-        return decodeJrCondition(opcode);
+    if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
+        return decodeLdRegReg(opcode);
+
+    if ((opcode & 0xC0) == 0x80)
+        return decodeAluRegister(opcode);
 
     switch (opcode) {
         case 0x00: return nop();
-        case 0x20: return jp_nz_i8();
+        case 0x18: return jr_i8();
         case 0x32: return ld_hld_a();
         case 0xC3: return jp_u16();
         case 0xCB: return stepCB();
@@ -164,6 +164,13 @@ int CPU::nop() {
     return 4;
 }
 
+int CPU::jr_i8() {
+    int8_t offset = static_cast<int8_t>(fetch8());
+
+    PC = static_cast<uint8_t>(PC + offset);
+    return 12;
+}
+
 int CPU::jp_u16() {
     const uint16_t addr = fetch16();
     PC = addr;
@@ -204,31 +211,89 @@ int CPU::cp_u8() {
     return 8;
 }
 
-int CPU::jp_nz_i8() {
-    const auto offset = static_cast<int8_t>(fetch8());
-
-    if (!getFlag(Flag::Z)) {
-        PC = static_cast<uint8_t>(PC + offset);
-        return 12;
-    }
-    return 8;
-}
-
 int CPU::rst(uint16_t address) {
     push16(address);
     PC = address;
     return 16;
 }
 
-int CPU::xor_a_reg(uint8_t opcode) {
-    uint8_t reg = opcode & 0x07;
-    A ^= readReg8(reg);
+void CPU::add_a(uint8_t value) {
+    uint16_t result = static_cast<uint16_t>(A) + value;
+
+    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((A & 0x0F) + (value & 0x0F)) > 0x0F);
+    setFlag(Flag::C, result > 0xFF);
+    A = result;
+}
+
+void CPU::adc_a(uint8_t value) {
+    uint8_t carry = getFlag(Flag::C) ? 1 : 0;
+    uint16_t result = static_cast<uint16_t>(A) + value + carry;
+
+    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((A & 0x0F) + (value & 0x0F)+carry) > 0x0F);
+    setFlag(Flag::C, result > 0xFF);
+    A = static_cast<uint8_t>(result);
+}
+
+void CPU::sub_a(uint8_t value) {
+    uint8_t result = static_cast<uint8_t>(A - value);
+
+    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, ((A & 0x0F)) < (value & 0x0F));
+    setFlag(Flag::C, result < value);
+    A = result;
+}
+
+void CPU::sbc_a(uint8_t value) {
+    uint8_t carry = getFlag(Flag::C) ? 1 : 0;
+
+    uint16_t subtrahend = static_cast<uint16_t>(value) + carry;
+    uint8_t result = static_cast<uint8_t>(A - subtrahend);
+
+    setFlag(Flag::Z, result == 0);
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, ((A & 0x0F) < ((value & 0x0F) + carry)));
+    setFlag(Flag::C, static_cast<uint16_t>(A) < subtrahend);
+    A = result;
+}
+
+void CPU::and_a(uint8_t value) {
+    A &= value;
+
+    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, true);
+    setFlag(Flag::C, false);
+}
+
+void CPU::xor_a(uint8_t value) {
+    A ^= value;
     setFlag(Flag::Z, A == 0);
     setFlag(Flag::N, false);
     setFlag(Flag::H,false);
     setFlag(Flag::C, false);
+}
 
-    return reg == 6 ? 8 : 4;
+void CPU::or_a(uint8_t value) {
+    A |= value;
+
+    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, false);
+}
+
+void CPU::cp_a(uint8_t value) {
+    uint8_t result = static_cast<uint8_t>(A - value);
+
+    setFlag(Flag::Z, result == 0);
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, (A & 0x0F) < (value & 0x0F));
+    setFlag(Flag::C, A < value);
 }
 
 int CPU::stepCB() {
@@ -398,7 +463,22 @@ int CPU::decodeRegImmediate(uint8_t opcode) {
 }
 
 int CPU::decodeAluRegister(uint8_t opcode) {
-    std::cout << "alu not implemented" << std::endl;
+    uint8_t operation = (opcode >> 3) & 0x07;
+    uint8_t reg = opcode & 0x07;
+
+    uint8_t value = readReg8(reg);
+
+    switch (operation) {
+        case 0: add_a(value); break;
+        case 1: adc_a(value); break;
+        case 2: sub_a(value); break;
+        case 3: sbc_a(value); break;
+        case 4: and_a(value); break;
+        case 5: xor_a(value); break;
+        case 6: or_a(value); break;
+        case 7: cp_a(value); break;
+    }
+
     return 4;
 }
 

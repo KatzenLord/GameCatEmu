@@ -86,15 +86,24 @@ private:
 
     int nop();
     int halt();
+    int jr_i8();
     int jp_u16();
     int ld_hld_a();
     int ldh_a8_a();
     int ldh_a_a8();
     int ld_a16_a();
     int cp_u8();
-    int jp_nz_i8();
     int rst(uint16_t address);
-    int xor_a_reg(uint8_t opcode);
+
+    // ALU operations
+    void add_a(uint8_t value);
+    void adc_a(uint8_t value);
+    void sub_a(uint8_t value);
+    void sbc_a(uint8_t value);
+    void and_a(uint8_t value);
+    void xor_a(uint8_t value);
+    void or_a(uint8_t value);
+    void cp_a(uint8_t value);
 
     int unimplemented(uint8_t opcode, uint16_t oldPC);
 
