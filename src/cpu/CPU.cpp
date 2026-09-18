@@ -479,7 +479,7 @@ int CPU::decodeAluRegister(uint8_t opcode) {
         case 7: cp_a(value); break;
     }
 
-    return 4;
+    return reg == 6 ? 8 : 4;
 }
 
 int CPU::unimplemented(uint8_t opcode, uint16_t oldPC) {
