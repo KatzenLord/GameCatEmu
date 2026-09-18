@@ -39,6 +39,11 @@ int CPU::step() {
 
     printTrace(oldPC, opcode);
 
+    if ((opcode & 0xC7) == 0xC7) {
+        uint16_t addr = opcode & 0x38;
+        return rst(addr);
+    }
+
     if ((opcode & 0xCF) == 0x01)
         return decodeLdReg16(opcode);
 
@@ -57,11 +62,14 @@ int CPU::step() {
     if ((opcode & 0xF8) == 0xA8)
         return xor_a_reg(opcode);
 
-    if ((opcode & 0xC7) == 0xC7) {
-        uint16_t addr = opcode & 0x38;
-        return rst(addr);
-    }
+    if ((opcode & 0xCF) == 0x03)
+        return decodeIncReg16(opcode);
 
+    if ((opcode & 0xCF) == 0x0B)
+        return decodeDecReg16(opcode);
+
+    if ((opcode & 0xE7) == 0x20)
+        return decodeJrCondition(opcode);
 
     switch (opcode) {
         case 0x00: return nop();
@@ -335,6 +343,46 @@ int CPU::decodeIncReg8(uint8_t opcode) {
     setFlag(Flag::H, (oldVal & 0x0F) == 0x00);
 
     return reg == 6 ? 8 : 4;
+}
+
+int CPU::decodeIncReg16(uint8_t opcode) {
+    switch ((opcode >> 4) & 0x03) {
+        case 0: setBC(getBC() + 1); break;
+        case 1: setDE(getDE() + 1); break;
+        case 2: setHL(getHL() + 1); break;
+        case 3: SP++; break;
+        default: break;
+    }
+    return 8;
+}
+
+int CPU::decodeDecReg16(uint8_t opcode) {
+    switch ((opcode >> 4) & 0x03) {
+        case 0: setBC(getBC() - 1); break;
+        case 1: setDE(getDE() - 1); break;
+        case 2: setHL(getHL() - 1); break;
+        case 3: SP--; break;
+        default: break;
+    }
+    return 8;
+}
+
+int CPU::decodeJrCondition(uint8_t opcode) {
+    int8_t offset = static_cast<int8_t>(fetch8());
+    uint8_t condition = (opcode >> 3) & 0x03;
+    bool shouldJump = false;
+
+    switch (condition) {
+        case 0: shouldJump = !getFlag(Flag::Z); break;
+        case 1: shouldJump = getFlag(Flag::Z); break;
+        case 2: shouldJump = !getFlag(Flag::C); break;
+        case 3: shouldJump = getFlag(Flag::C); break;
+    }
+    if (shouldJump) {
+        PC = static_cast<uint16_t>(PC + offset);
+        return 12;
+    }
+    return 8;
 }
 
 int CPU::decodeRegImmediate(uint8_t opcode) {

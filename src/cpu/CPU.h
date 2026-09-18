@@ -78,8 +78,11 @@ private:
     int decodeLdReg16(uint8_t opcode);
     int decodeDecReg8(uint8_t opcode);
     int decodeIncReg8(uint8_t opcode);
+    int decodeDecReg16(uint8_t opcode);
+    int decodeIncReg16(uint8_t opcode);
     int decodeRegImmediate(uint8_t opcode);
     int decodeAluRegister(uint8_t opcode);
+    int decodeJrCondition(uint8_t opcode);
 
     int nop();
     int halt();
