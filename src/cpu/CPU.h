@@ -87,6 +87,8 @@ private:
     int decodeJrCondition(uint8_t opcode);
     int decodePushReg16(uint8_t opcode);
     int decodePopReg16(uint8_t opcode);
+    int decodeJpCondition(uint8_t opcode);
+    int decodeRetCondition(uint8_t opcode);
     
     // normal instructions
     int nop();

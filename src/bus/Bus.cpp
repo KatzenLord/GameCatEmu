@@ -4,14 +4,22 @@
 
 #include "Bus.h"
 
+#include <iostream>
+
 Bus::Bus(Cartridge &cartridge)
     : cartridge(cartridge){
 }
-
+uint8_t joypSelect = 0x30;
 uint8_t Bus::read8(const uint16_t address) const {
     // Debug, delete me later
     if (address == 0xFF44) {
         return 0x94;
+    }
+
+    if (address == 0xFF00) {
+        // Bits 0-3 = 1 heißt: keine Taste gedrückt
+        // Bits 4-5 kommen vom Spiel-Select zurück
+        return static_cast<uint8_t>(0xC0 | joypSelect | 0x0F);
     }
 
     if (address <= 0x7FFF) {
@@ -51,6 +59,20 @@ uint8_t Bus::read8(const uint16_t address) const {
 }
 
 void Bus::write8(uint16_t address, uint8_t data) {
+    if (address == 0xFFFF) {
+        std::cout << "WRITE IE = 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(data)
+                  << std::dec << "\n";
+    }
+
+    if (address == 0xFF0F) {
+        std::cout << "WRITE IF = 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(data)
+                  << std::dec << "\n";
+    }
+
     if (address <= 0x7FFF) {
         cartridge.write(address, data);
         return;

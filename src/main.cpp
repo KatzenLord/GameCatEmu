@@ -6,7 +6,7 @@
 #include "bus/Bus.h"
 #include "cartridge/Cartridge.h"
 #include "cpu/CPU.h"
-
+constexpr int MAX_INSTRUCTIONS = 10'000'000;
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     Bus bus(cartridge);
     CPU cpu(bus);
 
-    for (int i = 0; i < 500000 && !cpu.isHalted(); ++i) {
+    for (int i = 0; i < MAX_INSTRUCTIONS && !cpu.isHalted(); ++i) {
         int cycles = cpu.step();
 
         //std::cout << "Step " << i

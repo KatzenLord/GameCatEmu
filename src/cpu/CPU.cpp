@@ -34,20 +34,45 @@ int CPU::step() {
     if (halted) {
         return 4;
     }
+    const uint8_t ie = read8(0xFFFF);
+    const uint8_t iff = read8(0xFF0F);
+    const uint8_t pending = ie & iff & 0x1F;
+
+    if (pending != 0) {
+        std::cout << "INT pending IE=0x"
+                  << std::hex << std::uppercase << static_cast<int>(ie)
+                  << " IF=0x" << static_cast<int>(iff)
+                  << " IME=" << interruptMasterEnable
+                  << " PC=0x" << PC
+                  << std::dec << "\n";
+    }
+
     const uint16_t oldPC = PC;
     const uint8_t opcode = fetch8();
 
-    if (oldPC >= 0x279B && oldPC <= 0x27A1) {
-        printTrace(oldPC, opcode);
-        if (oldPC == 0x279B) {
-            std::cout << "ENTER/FILL LOOP "
-                      << "AF=" << std::hex << getAF()
-                      << " BC=" << getBC()
-                      << " DE=" << getDE()
-                      << " HL=" << getHL()
-                      << " SP=" << SP
-                      << std::dec << "\n";
-        }
+    //printTrace(oldPC, opcode);
+    //if (oldPC == 0x279B) {
+    //    std::cout << "ENTER/FILL LOOP "
+    //              << "AF=" << std::hex << getAF()
+    //              << " BC=" << getBC()
+    //              << " DE=" << getDE()
+    //              << " HL=" << getHL()
+    //              << " SP=" << SP
+    //              << std::dec << "\n";
+    //}
+    //if (oldPC == 0x0038) {
+    //    std::cout << "ENTERED 0038 "
+    //              << "AF=" << std::hex << getAF()
+    //              << " BC=" << getBC()
+    //              << " DE=" << getDE()
+    //              << " HL=" << getHL()
+    //              << " SP=" << SP
+    //              << std::dec << "\n";
+    //    halted = true;
+    //    return 4;
+    //}
+    if (oldPC == 0x0040) {
+        std::cout << "ENTER VBLANK INTERRUPT\n";
     }
 
     if ((opcode & 0xC7) == 0xC7) {
@@ -75,6 +100,12 @@ int CPU::step() {
 
     if ((opcode & 0xE7) == 0x20)
         return decodeJrCondition(opcode);
+
+    if ((opcode & 0xE7) == 0xC0)
+        return decodeRetCondition(opcode);
+
+    if ((opcode & 0xE7) == 0xC2)
+        return decodeJpCondition(opcode);
 
     if ((opcode & 0xCF) == 0x0B)
         return decodeDecReg16(opcode);
@@ -251,11 +282,11 @@ int CPU::ldh_a8_a() {
 
     write8(addr, A);
 
-    std::cout << std::hex << std::uppercase << std::setfill('0')
-              << "LDH ($" << std::setw(2) << static_cast<int>(offset)
-              << "),A -> [0x" << std::setw(4) << addr
-              << "] = 0x" << std::setw(2) << static_cast<int>(A)
-              << std::dec << "\n";
+    //std::cout << std::hex << std::uppercase << std::setfill('0')
+    //          << "LDH ($" << std::setw(2) << static_cast<int>(offset)
+    //          << "),A -> [0x" << std::setw(4) << addr
+    //          << "] = 0x" << std::setw(2) << static_cast<int>(A)
+    //          << std::dec << "\n";
 
     return 12;
 }
@@ -265,11 +296,11 @@ int CPU::ldh_a_a8() {
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
     A = read8(addr);
 
-    std::cout << std::hex << std::uppercase << std::setfill('0')
-              << "LDH A,($" << std::setw(2) << static_cast<int>(offset)
-              << ") -> [0x" << std::setw(4) << addr
-              << "] = 0x" << std::setw(2) << static_cast<int>(A)
-              << std::dec << "\n";
+    //std::cout << std::hex << std::uppercase << std::setfill('0')
+    //          << "LDH A,($" << std::setw(2) << static_cast<int>(offset)
+    //          << ") -> [0x" << std::setw(4) << addr
+    //          << "] = 0x" << std::setw(2) << static_cast<int>(A)
+    //          << std::dec << "\n";
 
     return 12;
 }
@@ -311,12 +342,14 @@ int CPU::ret() {
 }
 
 int CPU::di() {
+    std::cout << "DI executed\n";
     interruptMasterEnable=false;
     enableInterruptsNextInstruction=false;
     return 4;
 }
 
 int CPU::ei() {
+    std::cout << "EI executed\n";
     // remove later
     interruptMasterEnable=true;
     // later delayen
@@ -635,6 +668,45 @@ int CPU::decodePopReg16(uint8_t opcode) {
     }
 
     return 12;
+}
+
+int CPU::decodeJpCondition(uint8_t opcode) {
+    const uint8_t addr = fetch16();
+    const uint8_t condition = (opcode >> 3) & 0x03;
+
+    bool shouldJump = false;
+    switch (condition) {
+        case 0: shouldJump = !getFlag(Flag::Z); break;
+        case 1: shouldJump = getFlag(Flag::Z); break;
+        case 2: shouldJump = !getFlag(Flag::C); break;
+        case 3: shouldJump = getFlag(Flag::C); break;
+    }
+
+    if (shouldJump) {
+        PC = addr;
+        return 16;
+    }
+
+    return 12;
+}
+
+int CPU::decodeRetCondition(uint8_t opcode) {
+    const uint8_t condition = (opcode >> 3) & 0x03;
+
+    bool shouldReturn = false;
+
+    switch (condition) {
+        case 0: shouldReturn = !getFlag(Flag::Z); break;
+        case 1: shouldReturn = getFlag(Flag::Z); break;
+        case 2: shouldReturn = !getFlag(Flag::C); break;
+        case 3: shouldReturn = getFlag(Flag::C); break;
+    }
+
+    if (shouldReturn) {
+        PC = pop16();
+        return 20;
+    }
+    return 8;
 }
 
 int CPU::decodeRegImmediate(uint8_t opcode) {
