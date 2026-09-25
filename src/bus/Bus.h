@@ -31,6 +31,9 @@ private:
     std::array<uint8_t, 0x007F> hram{}; // 0xFF80 - 0xFFFE
 
     uint8_t interuptEnable = 0;         // 0xFFFF
+
+    mutable uint8_t fakeLY = 0;
+
 };
 
 #endif //GAMECATEMU_BUS_H

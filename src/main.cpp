@@ -6,7 +6,7 @@
 #include "bus/Bus.h"
 #include "cartridge/Cartridge.h"
 #include "cpu/CPU.h"
-constexpr int MAX_INSTRUCTIONS = 10'000'000;
+constexpr int MAX_INSTRUCTIONS = 2'000'000;
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {

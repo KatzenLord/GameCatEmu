@@ -13,6 +13,8 @@ CPU::CPU(Bus &bus)
     reset();
 }
 
+uint16_t debugCurrentPC = 0;
+
 void CPU::reset() {
     A = 0x01;
     F = 0xB0;
@@ -34,21 +36,35 @@ int CPU::step() {
     if (halted) {
         return 4;
     }
-    const uint8_t ie = read8(0xFFFF);
-    const uint8_t iff = read8(0xFF0F);
-    const uint8_t pending = ie & iff & 0x1F;
 
-    if (pending != 0) {
-        std::cout << "INT pending IE=0x"
-                  << std::hex << std::uppercase << static_cast<int>(ie)
-                  << " IF=0x" << static_cast<int>(iff)
-                  << " IME=" << interruptMasterEnable
-                  << " PC=0x" << PC
-                  << std::dec << "\n";
+    const int interruptCycles = handleInterrupts();
+    if (interruptCycles != 0) {
+        return interruptCycles;
     }
 
+    //pcHistory[pcHistoryIndex] = PC;
+    //pcHistoryIndex = (pcHistoryIndex + 1) % pcHistory.size();
+
+    //stepCounter++;
+
+    //if (stepCounter % 100000 == 0) {
+    //    std::cout << "Last PCs: ";
+    //    for (size_t i = 0; i < pcHistory.size(); i++) {
+    //        size_t index = (pcHistoryIndex + i) % pcHistory.size();
+    //        std::cout << "0x"
+    //                  << std::hex << std::uppercase
+    //                  << pcHistory[index] << " ";
+    //    }
+    //    std::cout << std::dec << "\n";
+    //}
+
     const uint16_t oldPC = PC;
+    debugCurrentPC = oldPC;
     const uint8_t opcode = fetch8();
+
+    if (oldPC == 0x02ED || oldPC == 0x02EF || oldPC == 0x02F0) {
+        printTrace(oldPC, opcode);
+    }
 
     //printTrace(oldPC, opcode);
     //if (oldPC == 0x279B) {
@@ -71,6 +87,8 @@ int CPU::step() {
     //    halted = true;
     //    return 4;
     //}
+
+
     if (oldPC == 0x0040) {
         std::cout << "ENTER VBLANK INTERRUPT\n";
     }
@@ -132,6 +150,7 @@ int CPU::step() {
         case 0xC9: return ret();
         case 0xCB: return stepCB();
         case 0xCD: return call_u16();
+        case 0xD9: return reti();
         case 0xE0: return ldh_a8_a();
         case 0xE2: return ldh_c_a();
         case 0xE6: return and_a_n8();
@@ -270,15 +289,37 @@ int CPU::ld_hld_a() {
 }
 
 int CPU::ldh_c_a() {
-    const uint16_t addr = static_cast<uint16_t>(0xFF00u+C);
+    const uint16_t instrPC = static_cast<uint16_t>(PC - 1);
+    const uint16_t addr = static_cast<uint16_t>(0xFF00u + C);
+
+    if (addr == 0xFF0F || addr == 0xFFFF) {
+        std::cout << "LDH (C) WRITE "
+                  << (addr == 0xFF0F ? "IF" : "IE")
+                  << " = 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(A)
+                  << " from PC=0x" << instrPC
+                  << std::dec << "\n";
+    }
     write8(addr, A);
 
     return 8;
 }
 
 int CPU::ldh_a8_a() {
+    const uint16_t instrPC = static_cast<uint16_t>(PC - 1); // PC stand nach Opcode-Fetch
     const uint8_t offset = fetch8();
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
+
+    if (addr == 0xFF0F || addr == 0xFFFF) {
+        std::cout << "LDH WRITE "
+                  << (addr == 0xFF0F ? "IF" : "IE")
+                  << " = 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(A)
+                  << " from PC=0x" << instrPC
+                  << std::dec << "\n";
+    }
 
     write8(addr, A);
 
@@ -306,7 +347,18 @@ int CPU::ldh_a_a8() {
 }
 
 int CPU::ld_a16_a() {
+    const uint16_t instrPC = static_cast<uint16_t>(PC - 1); // PC nach Opcode-Fetch
     const uint16_t addr = fetch16();
+
+    if (addr == 0xFF0F || addr == 0xFFFF) {
+        std::cout << "LD WRITE "
+                  << (addr == 0xFF0F ? "IF" : "IE")
+                  << " = 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(A)
+                  << " from PC=0x" << instrPC
+                  << std::dec << "\n";
+    }
     write8(addr, A);
     return 16;
 }
@@ -338,6 +390,12 @@ int CPU::call_u16() {
 
 int CPU::ret() {
     PC = pop16();
+    return 16;
+}
+
+int CPU::reti() {
+    PC = pop16();
+    interruptMasterEnable = true;
     return 16;
 }
 
@@ -739,6 +797,33 @@ int CPU::decodeAluRegister(uint8_t opcode) {
     }
 
     return reg == 6 ? 8 : 4;
+}
+
+int CPU::handleInterrupts() {
+    if (!interruptMasterEnable) {
+        return 0;
+    }
+
+    const uint8_t ie = read8(0xFFFF);
+    const uint8_t iff = read8(0xFF0F);
+    const uint8_t pending = ie & iff & 0x1F;
+
+    if (pending == 0) {
+        return 0;
+    }
+
+    interruptMasterEnable = false;
+
+    if (pending & 0x01) {
+        write8(0xFF0F, iff & static_cast<uint8_t>(~0x01));
+        push16(PC);
+        PC = 0x0040;
+
+        std::cout << "ENTER VBLANK INTERRUPT\n";
+
+        return 20;
+    }
+    return 0;
 }
 
 int CPU::unimplemented(uint8_t opcode, uint16_t oldPC) {

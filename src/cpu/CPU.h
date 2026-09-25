@@ -108,6 +108,7 @@ private:
     int cp_u8();
     int call_u16();
     int ret();
+    int reti();
     int di();
     int ei();
     int cpl();
@@ -132,6 +133,7 @@ private:
     int swap_reg(uint8_t reg);
 
     // utils
+    int handleInterrupts();
     int unimplemented(uint8_t opcode, uint16_t oldPC);
     void printTrace(uint16_t oldPC, uint8_t opcode) const;
 };
