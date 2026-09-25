@@ -90,8 +90,12 @@ int CPU::step() {
 
     switch (opcode) {
         case 0x00: return nop();
+        case 0x0A: return ld_a_bc();
         case 0x18: return jr_i8();
+        case 0x19: return add_hl_de();
+        case 0x1A: return ld_a_de();
         case 0x2A: return ld_a_hli();
+        case 0x2F: return cpl();
         case 0x32: return ld_hld_a();
         case 0xC3: return jp_u16();
         case 0xC9: return ret();
@@ -99,9 +103,12 @@ int CPU::step() {
         case 0xCD: return call_u16();
         case 0xE0: return ldh_a8_a();
         case 0xE2: return ldh_c_a();
+        case 0xE6: return and_a_n8();
+        case 0xE9: return jp_hl();
         case 0xEA: return ld_a16_a();
         case 0xF0: return ldh_a_a8();
         case 0xF3: return di();
+        case 0xFA: return ld_a_a16();
         case 0xFB: return ei();
         case 0xFE: return cp_u8();
         default:
@@ -200,6 +207,23 @@ int CPU::jp_u16() {
     return 16;
 }
 
+int CPU::jp_hl() {
+    PC = getHL();
+    return 4;
+}
+
+int CPU::ld_a_bc() {
+    const uint16_t addr = getDE();
+    A = read8(addr);
+    return 8;
+}
+
+int CPU::ld_a_de() {
+    const uint16_t addr = getDE();
+    A = read8(addr);
+    return 8;
+}
+
 int CPU::ld_a_hli() {
     const uint16_t addr = getHL();
     A = read8(addr);
@@ -256,6 +280,13 @@ int CPU::ld_a16_a() {
     return 16;
 }
 
+int CPU::ld_a_a16() {
+    const uint16_t addr = fetch16();
+    A = read8(addr);
+
+    return 16;
+}
+
 int CPU::cp_u8() {
     uint8_t val = fetch8();
     setFlag(Flag::Z, A == val);
@@ -286,10 +317,39 @@ int CPU::di() {
 }
 
 int CPU::ei() {
+    // remove later
     interruptMasterEnable=true;
     // later delayen
     //enableInterruptsNextInstruction = true;
     return 4;
+}
+
+int CPU::cpl() {
+    A = ~A;
+    setFlag(Flag::N, true);
+    setFlag(Flag::H, true);
+
+    return 4;
+}
+
+int CPU::and_a_n8() {
+    const uint8_t value = fetch8();
+    and_a(value);
+    return 8;
+}
+
+int CPU::add_hl_de() {
+    const uint16_t hl = getHL();
+    const uint16_t de = getDE();
+
+    const uint32_t result = static_cast<uint32_t>(hl) + de;
+
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((hl & 0x0FFF) + (de & 0x0FFF)) > 0x0FFF);
+    setFlag(Flag::C, result > 0xFFFF);
+
+    setHL(static_cast<uint16_t>(result));
+    return 8;
 }
 
 int CPU::rst(uint16_t address) {
@@ -380,12 +440,31 @@ void CPU::cp_a(uint8_t value) {
 int CPU::stepCB() {
     uint8_t opcode = fetch8();
 
+    if ((opcode & 0xF8) == 0x30) {
+        const uint8_t reg = opcode & 0x07;
+        return swap_reg(reg);
+    }
+
     std::cerr << "Unimplemented CB Opcode 0x"
         << std::hex << std::uppercase
         << static_cast<int>(opcode)
         << " \nTODO" << std::endl;
+    halted = true;
+    return 4;
+}
 
-    return 8;
+int CPU::swap_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    value = static_cast<uint8_t>((value >> 4) | (value << 4));
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N,false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, false);
+
+    return reg == 6 ? 16 : 8;
 }
 
 bool CPU::getFlag(Flag flag) const {

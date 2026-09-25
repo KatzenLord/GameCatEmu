@@ -88,22 +88,29 @@ private:
     int decodePushReg16(uint8_t opcode);
     int decodePopReg16(uint8_t opcode);
     
-
+    // normal instructions
     int nop();
     int halt();
     int jr_i8();
     int jp_u16();
+    int jp_hl();
+    int ld_a_bc();
+    int ld_a_de();
     int ld_a_hli();
     int ld_hld_a();
     int ldh_c_a();
     int ldh_a8_a();
     int ldh_a_a8();
     int ld_a16_a();
+    int ld_a_a16();
     int cp_u8();
     int call_u16();
     int ret();
     int di();
     int ei();
+    int cpl();
+    int and_a_n8();
+    int add_hl_de();
 
     int rst(uint16_t address);
 
@@ -117,9 +124,13 @@ private:
     void or_a(uint8_t value);
     void cp_a(uint8_t value);
 
+    // CB prefixed instructions
 
+
+    int swap_reg(uint8_t reg);
+
+    // utils
     int unimplemented(uint8_t opcode, uint16_t oldPC);
-
     void printTrace(uint16_t oldPC, uint8_t opcode) const;
 };
 
