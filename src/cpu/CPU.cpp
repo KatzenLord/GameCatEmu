@@ -37,8 +37,17 @@ int CPU::step() {
     const uint16_t oldPC = PC;
     const uint8_t opcode = fetch8();
 
-    if (PC < 0x0214 || PC > 0x0219) {
+    if (oldPC >= 0x279B && oldPC <= 0x27A1) {
         printTrace(oldPC, opcode);
+        if (oldPC == 0x279B) {
+            std::cout << "ENTER/FILL LOOP "
+                      << "AF=" << std::hex << getAF()
+                      << " BC=" << getBC()
+                      << " DE=" << getDE()
+                      << " HL=" << getHL()
+                      << " SP=" << SP
+                      << std::dec << "\n";
+        }
     }
 
     if ((opcode & 0xC7) == 0xC7) {
@@ -89,9 +98,11 @@ int CPU::step() {
         case 0xCB: return stepCB();
         case 0xCD: return call_u16();
         case 0xE0: return ldh_a8_a();
+        case 0xE2: return ldh_c_a();
         case 0xEA: return ld_a16_a();
         case 0xF0: return ldh_a_a8();
         case 0xF3: return di();
+        case 0xFB: return ei();
         case 0xFE: return cp_u8();
         default:
             return unimplemented(opcode, oldPC);
@@ -203,6 +214,13 @@ int CPU::ld_hld_a() {
     return 8;
 }
 
+int CPU::ldh_c_a() {
+    const uint16_t addr = static_cast<uint16_t>(0xFF00u+C);
+    write8(addr, A);
+
+    return 8;
+}
+
 int CPU::ldh_a8_a() {
     const uint8_t offset = fetch8();
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
@@ -264,6 +282,13 @@ int CPU::ret() {
 int CPU::di() {
     interruptMasterEnable=false;
     enableInterruptsNextInstruction=false;
+    return 4;
+}
+
+int CPU::ei() {
+    interruptMasterEnable=true;
+    // later delayen
+    //enableInterruptsNextInstruction = true;
     return 4;
 }
 
@@ -413,7 +438,7 @@ int CPU::decodeLdRegReg(uint8_t opcode) {
     const uint8_t dest = (opcode >> 3) & 0x07;
     const uint8_t src = opcode & 0x07;
 
-    const uint8_t value = readReg8(dest);
+    const uint8_t value = readReg8(src);
     writeReg8(dest, value);
 
     if (dest == 6 || src == 6) {

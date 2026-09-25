@@ -32,11 +32,11 @@ int main(int argc, char *argv[]) {
     Bus bus(cartridge);
     CPU cpu(bus);
 
-    for (int i = 0; i < 200000 && !cpu.isHalted(); ++i) {
+    for (int i = 0; i < 500000 && !cpu.isHalted(); ++i) {
         int cycles = cpu.step();
 
-        std::cout << "Step " << i
-            << " cycles=" << cycles << std::endl;
+        //std::cout << "Step " << i
+        //    << " cycles=" << cycles << std::endl;
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {

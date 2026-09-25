@@ -95,6 +95,7 @@ private:
     int jp_u16();
     int ld_a_hli();
     int ld_hld_a();
+    int ldh_c_a();
     int ldh_a8_a();
     int ldh_a_a8();
     int ld_a16_a();
@@ -102,6 +103,7 @@ private:
     int call_u16();
     int ret();
     int di();
+    int ei();
 
     int rst(uint16_t address);
 
