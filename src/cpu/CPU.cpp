@@ -37,12 +37,17 @@ int CPU::step() {
     const uint16_t oldPC = PC;
     const uint8_t opcode = fetch8();
 
-    printTrace(oldPC, opcode);
+    if (PC < 0x0214 || PC > 0x0219) {
+        printTrace(oldPC, opcode);
+    }
 
     if ((opcode & 0xC7) == 0xC7) {
         uint16_t addr = opcode & 0x38;
         return rst(addr);
     }
+
+    if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
+        return decodeLdRegReg(opcode);
 
     if ((opcode & 0xCF) == 0x01)
         return decodeLdReg16(opcode);
@@ -65,21 +70,27 @@ int CPU::step() {
     if ((opcode & 0xCF) == 0x0B)
         return decodeDecReg16(opcode);
 
-    if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
-        return decodeLdRegReg(opcode);
-
     if ((opcode & 0xC0) == 0x80)
         return decodeAluRegister(opcode);
+
+    if ((opcode & 0xCF) == 0xC5)
+        return decodePushReg16(opcode);
+
+    if ((opcode & 0xCF) == 0xC1)
+        return decodePopReg16(opcode);
 
     switch (opcode) {
         case 0x00: return nop();
         case 0x18: return jr_i8();
         case 0x32: return ld_hld_a();
         case 0xC3: return jp_u16();
+        case 0xC9: return ret();
         case 0xCB: return stepCB();
+        case 0xCD: return call_u16();
         case 0xE0: return ldh_a8_a();
         case 0xEA: return ld_a16_a();
         case 0xF0: return ldh_a_a8();
+        case 0xF3: return di();
         case 0xFE: return cp_u8();
         default:
             return unimplemented(opcode, oldPC);
@@ -186,13 +197,13 @@ int CPU::ld_hld_a() {
 
 int CPU::ldh_a8_a() {
     const uint8_t offset = fetch8();
-    write8(0xFF00 - offset, A);
+    write8(0xFF00 + offset, A);
     return 12;
 }
 
 int CPU::ldh_a_a8() {
     const uint8_t offset = fetch8();
-    A = read8(0xFF00 - offset);
+    A = read8(0xFF00 + offset);
     return 12;
 }
 
@@ -209,6 +220,26 @@ int CPU::cp_u8() {
     setFlag(Flag::H, (A & 0x0F) < (val & 0x0F));
     setFlag(Flag::C, A < val);
     return 8;
+}
+
+int CPU::call_u16() {
+    uint16_t addr = fetch16();
+
+    push16(PC);
+    PC = addr;
+
+    return 24;
+}
+
+int CPU::ret() {
+    PC = pop16();
+    return 16;
+}
+
+int CPU::di() {
+    interruptMasterEnable=false;
+    enableInterruptsNextInstruction=false;
+    return 4;
 }
 
 int CPU::rst(uint16_t address) {
@@ -448,6 +479,33 @@ int CPU::decodeJrCondition(uint8_t opcode) {
         return 12;
     }
     return 8;
+}
+
+int CPU::decodePushReg16(uint8_t opcode) {
+    uint8_t regPair = (opcode >> 4) & 0x03;
+
+    switch (regPair) {
+        case 0: push16(getBC()); break;
+        case 1: push16(getDE()); break;
+        case 2: push16(getHL()); break;
+        case 3: push16(getAF()); break;
+    }
+
+    return 16;
+}
+
+int CPU::decodePopReg16(uint8_t opcode) {
+    uint8_t regPair = (opcode >> 4) & 0x03;
+    uint16_t value = pop16();
+
+    switch (regPair) {
+        case 0: setBC(value); break;
+        case 1: setDE(value); break;
+        case 2: setHL(value); break;
+        case 3: setAF(value); break;
+    }
+
+    return 12;
 }
 
 int CPU::decodeRegImmediate(uint8_t opcode) {

@@ -46,6 +46,8 @@ private:
     bool halted = false;
     bool stopped = false;
 
+    bool interruptMasterEnable;
+    bool enableInterruptsNextInstruction;
 
     uint8_t fetch8();
     uint16_t fetch16();
@@ -83,6 +85,9 @@ private:
     int decodeRegImmediate(uint8_t opcode);
     int decodeAluRegister(uint8_t opcode);
     int decodeJrCondition(uint8_t opcode);
+    int decodePushReg16(uint8_t opcode);
+    int decodePopReg16(uint8_t opcode);
+    
 
     int nop();
     int halt();
@@ -93,6 +98,10 @@ private:
     int ldh_a_a8();
     int ld_a16_a();
     int cp_u8();
+    int call_u16();
+    int ret();
+    int di();
+
     int rst(uint16_t address);
 
     // ALU operations
@@ -104,6 +113,7 @@ private:
     void xor_a(uint8_t value);
     void or_a(uint8_t value);
     void cp_a(uint8_t value);
+
 
     int unimplemented(uint8_t opcode, uint16_t oldPC);
 
