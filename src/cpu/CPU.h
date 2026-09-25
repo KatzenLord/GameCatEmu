@@ -93,6 +93,7 @@ private:
     int halt();
     int jr_i8();
     int jp_u16();
+    int ld_a_hli();
     int ld_hld_a();
     int ldh_a8_a();
     int ldh_a_a8();

@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     Bus bus(cartridge);
     CPU cpu(bus);
 
-    for (int i = 0; i < 40000 && !cpu.isHalted(); ++i) {
+    for (int i = 0; i < 200000 && !cpu.isHalted(); ++i) {
         int cycles = cpu.step();
 
         std::cout << "Step " << i

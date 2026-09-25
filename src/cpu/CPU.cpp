@@ -82,6 +82,7 @@ int CPU::step() {
     switch (opcode) {
         case 0x00: return nop();
         case 0x18: return jr_i8();
+        case 0x2A: return ld_a_hli();
         case 0x32: return ld_hld_a();
         case 0xC3: return jp_u16();
         case 0xC9: return ret();
@@ -188,6 +189,13 @@ int CPU::jp_u16() {
     return 16;
 }
 
+int CPU::ld_a_hli() {
+    const uint16_t addr = getHL();
+    A = read8(addr);
+    setHL(addr+1);
+    return 8;
+}
+
 int CPU::ld_hld_a() {
     const uint16_t addr = getHL();
     write8(addr, A);
@@ -197,13 +205,30 @@ int CPU::ld_hld_a() {
 
 int CPU::ldh_a8_a() {
     const uint8_t offset = fetch8();
-    write8(0xFF00 + offset, A);
+    const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
+
+    write8(addr, A);
+
+    std::cout << std::hex << std::uppercase << std::setfill('0')
+              << "LDH ($" << std::setw(2) << static_cast<int>(offset)
+              << "),A -> [0x" << std::setw(4) << addr
+              << "] = 0x" << std::setw(2) << static_cast<int>(A)
+              << std::dec << "\n";
+
     return 12;
 }
 
 int CPU::ldh_a_a8() {
     const uint8_t offset = fetch8();
-    A = read8(0xFF00 + offset);
+    const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
+    A = read8(addr);
+
+    std::cout << std::hex << std::uppercase << std::setfill('0')
+              << "LDH A,($" << std::setw(2) << static_cast<int>(offset)
+              << ") -> [0x" << std::setw(4) << addr
+              << "] = 0x" << std::setw(2) << static_cast<int>(A)
+              << std::dec << "\n";
+
     return 12;
 }
 

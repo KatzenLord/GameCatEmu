@@ -9,6 +9,11 @@ Bus::Bus(Cartridge &cartridge)
 }
 
 uint8_t Bus::read8(const uint16_t address) const {
+    // Debug, delete me later
+    if (address == 0xFF44) {
+        return 0x94;
+    }
+
     if (address <= 0x7FFF) {
         return cartridge.read(address);
     }
