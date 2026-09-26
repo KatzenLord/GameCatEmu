@@ -74,7 +74,9 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
     if ((opcode & 0xC7) == 0xC7) {
         return rst(opcode & 0x38, oldPC);
     }
-
+    if ((opcode & 0xCF) == 0x09) {
+        return decodeAddHLReg16(opcode);
+    }
     if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
         return decodeLdRegReg(opcode);
 
@@ -127,6 +129,7 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0x2F: return cpl();
         case 0x32: return ld_hld_a();
         case 0xC3: return jp_u16();
+        case 0xC6: return add_a_n8();
         case 0xC9: return ret();
         case 0xCB: return stepCB();
         case 0xCD: return call_u16();
@@ -395,6 +398,20 @@ int CPU::add_hl_de() {
     return 8;
 }
 
+int CPU::add_a_n8() {
+    const uint8_t value = read8(PC++);
+    const uint16_t res = A + value;
+
+    setFlag(Flag::Z, res == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((A & 0x0F) + (value & 0x0F)) > 0x0F);
+    setFlag(Flag::C, res > 0xFF);
+
+    A = static_cast<uint8_t>(res);
+
+    return 8;
+}
+
 int CPU::rst(uint16_t address, uint16_t oldPC) {
     std::cout << "RST from PC=0x"
           << std::hex << std::uppercase << oldPC
@@ -492,9 +509,44 @@ void CPU::cp_a(uint8_t value) {
 int CPU::stepCB() {
     uint8_t opcode = fetch8();
 
+    if ((opcode & 0xF8) == 0x00) {
+        const uint8_t reg = opcode & 0x07;
+        return rlc_reg(reg);
+    }
+
+    if ((opcode & 0xF8) == 0x08) {
+        const uint8_t reg = opcode & 0x07;
+        return rrc_reg(reg);
+    }
+
+    if ((opcode & 0xF8) == 0x10) {
+        const uint8_t reg = opcode & 0x07;
+        return rl_reg(reg);
+    }
+
+    if ((opcode & 0xF8) == 0x18) {
+        const uint8_t reg = opcode & 0x07;
+        return rr_reg(reg);
+    }
+
+    if ((opcode & 0xF8) == 0x20) {
+        const uint8_t reg = opcode & 0x07;
+        return sla_reg(reg);
+    }
+
+    if ((opcode & 0xF8) == 0x28) {
+        const uint8_t reg = opcode & 0x07;
+        return sra_reg(reg);
+    }
+
     if ((opcode & 0xF8) == 0x30) {
         const uint8_t reg = opcode & 0x07;
         return swap_reg(reg);
+    }
+
+    if ((opcode & 0xF8) == 0x38) {
+        const uint8_t reg = opcode & 0x07;
+        return srl_reg(reg);
     }
 
     if ((opcode & 0xC0) == 0x40) {
@@ -533,6 +585,124 @@ int CPU::swap_reg(uint8_t reg) {
     setFlag(Flag::N,false);
     setFlag(Flag::H, false);
     setFlag(Flag::C, false);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::rlc_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+
+    bool carry = value & 0x80;
+
+    value = (value << 1) | (carry ? 1 : 0);
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::rrc_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    bool carry = value & 0x80;
+
+    value = (value >> 1) | (carry ? 0x80 : 0);
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::rl_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+
+    bool oldCarry = getFlag(Flag::C);
+    bool newCarry = value & 0x80;
+
+    value = (value << 1) | (oldCarry ? 1 : 0);
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, newCarry);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::rr_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+
+    bool oldCarry = getFlag(Flag::C);
+    bool newCarry = value & 0x80;
+
+    value = (value >> 1) | (oldCarry ? 0x80 : 0);
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, newCarry);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::sla_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    bool carry = value & 0x80;
+
+    value <<= 1;
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::sra_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    bool carry = value & 0x01;
+    uint8_t msb = value & 0x80;
+
+    value = (value >> 8) | msb;
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::srl_reg(uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    bool carry = value & 0x01;
+
+    value >>= 1;
+
+    writeReg8(reg, value);
+
+    setFlag(Flag::Z, value == 0);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
 
     return reg == 6 ? 16 : 8;
 }
@@ -770,6 +940,32 @@ int CPU::decodeRetCondition(uint8_t opcode) {
         PC = pop16();
         return 20;
     }
+    return 8;
+}
+
+int CPU::decodeAddHLReg16(uint8_t opcode) {
+    const uint8_t reg = (opcode >> 4) & 0x03;
+
+    uint16_t value;
+
+    switch (reg) {
+        case 0: value = getBC(); break;
+        case 1: value = getDE(); break;
+        case 2: value = getHL(); break;
+        case 3: value = SP; break;
+        default: return 0;
+    }
+
+    const uint16_t hl = getHL();
+
+    const uint32_t res = static_cast<uint32_t>(hl) + value;
+
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((hl & 0x0FFF) + (value & 0x0FFF)) > 0x0FFF);
+    setFlag(Flag::C, res > 0xFFFF);
+
+    setHL(static_cast<uint16_t>(res));
+
     return 8;
 }
 

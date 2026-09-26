@@ -89,7 +89,8 @@ private:
     int decodePopReg16(uint8_t opcode);
     int decodeJpCondition(uint8_t opcode);
     int decodeRetCondition(uint8_t opcode);
-    
+    int decodeAddHLReg16(uint8_t opcode);
+
     // normal instructions
     int nop();
     int halt();
@@ -116,6 +117,7 @@ private:
     int ei();
     int cpl();
     int and_a_n8();
+    int add_a_n8();
     int add_hl_de();
 
     int rst(uint16_t address, uint16_t oldPC);
@@ -132,8 +134,14 @@ private:
 
     // CB prefixed instructions
 
-
     int swap_reg(uint8_t reg);
+    int rlc_reg(uint8_t reg);
+    int rrc_reg(uint8_t reg);
+    int rl_reg(uint8_t reg);
+    int rr_reg(uint8_t reg);
+    int sla_reg(uint8_t reg);
+    int sra_reg(uint8_t reg);
+    int srl_reg(uint8_t reg);
     int bit_reg(uint8_t bit, uint8_t reg);
     int res_reg(uint8_t bit, uint8_t reg);
     int set_reg(uint8_t bit, uint8_t reg);
