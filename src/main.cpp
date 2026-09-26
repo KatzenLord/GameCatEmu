@@ -7,6 +7,9 @@
 #include "cartridge/Cartridge.h"
 #include "cpu/CPU.h"
 constexpr int MAX_INSTRUCTIONS = 2'000'000;
+static int frameCycles = 0;
+static int scanlineCycles = 0;
+static uint8_t ly = 0;
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {
@@ -34,6 +37,25 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < MAX_INSTRUCTIONS && !cpu.isHalted(); ++i) {
         int cycles = cpu.step();
+
+        scanlineCycles += cycles;
+        frameCycles += cycles;
+
+        if (scanlineCycles >= 456) {
+            scanlineCycles -= 456;
+
+            ly++;
+
+            if (ly > 153) {
+                ly = 0;
+            }
+
+            bus.setLY(ly);
+
+            if (ly == 144) {
+                bus.write8(0xFF0F, bus.read8(0xFF0F) | 0x01);
+            }
+        }
 
         //std::cout << "Step " << i
         //    << " cycles=" << cycles << std::endl;

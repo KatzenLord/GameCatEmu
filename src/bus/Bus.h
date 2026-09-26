@@ -21,6 +21,8 @@ public:
 
     uint16_t read16(uint16_t address) const;
     void write16(uint16_t address, uint16_t value);
+    void setLY(uint8_t value);
+
 private:
     Cartridge& cartridge;
 
@@ -33,6 +35,7 @@ private:
     uint8_t interuptEnable = 0;         // 0xFFFF
 
     mutable uint8_t fakeLY = 0;
+
 
 };
 

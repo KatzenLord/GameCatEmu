@@ -96,9 +96,12 @@ private:
     int jr_i8();
     int jp_u16();
     int jp_hl();
+    int ld_bc_a();
+    int ld_de_a();
     int ld_a_bc();
     int ld_a_de();
     int ld_a_hli();
+    int ld_hli_a();
     int ld_hld_a();
     int ldh_c_a();
     int ldh_a8_a();
@@ -115,7 +118,7 @@ private:
     int and_a_n8();
     int add_hl_de();
 
-    int rst(uint16_t address);
+    int rst(uint16_t address, uint16_t oldPC);
 
     // ALU operations
     void add_a(uint8_t value);
@@ -131,6 +134,9 @@ private:
 
 
     int swap_reg(uint8_t reg);
+    int bit_reg(uint8_t bit, uint8_t reg);
+    int res_reg(uint8_t bit, uint8_t reg);
+    int set_reg(uint8_t bit, uint8_t reg);
 
     // utils
     int handleInterrupts();

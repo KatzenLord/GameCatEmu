@@ -4,19 +4,24 @@
 
 #include "Bus.h"
 
+#include <iostream>
 
 
 Bus::Bus(Cartridge &cartridge)
     : cartridge(cartridge){
 }
-
+uint8_t joypSelect = 0x30;
 uint8_t Bus::read8(const uint16_t address) const {
     // Debug, delete me later
     if (address == 0xFF44) {
-        uint8_t value = fakeLY;
-        fakeLY = static_cast<uint8_t>((fakeLY + 1) % 154);
+        return fakeLY;
+    }
+    if (address == 0xFF00) {
+        const uint8_t value = static_cast<uint8_t>(0xC0 | joypSelect | 0x0F);
         return value;
     }
+
+
 
     if (address <= 0x7FFF) {
         return cartridge.read(address);
@@ -55,6 +60,23 @@ uint8_t Bus::read8(const uint16_t address) const {
 }
 
 void Bus::write8(uint16_t address, uint8_t data) {
+    // Debug, delete me
+    if (address == 0xFF44) {
+        fakeLY = 0;
+        return;
+    }
+    if (address == 0xFF80) {
+        std::cout << "WRITE FF80 = 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(data)
+                  << std::dec << "\n";
+    }
+
+    if (address == 0xFF00) {
+        joypSelect = data & 0x30;
+        io[0] = data;
+        return;
+    }
 
     if (address <= 0x7FFF) {
         cartridge.write(address, data);
@@ -97,6 +119,10 @@ void Bus::write8(uint16_t address, uint8_t data) {
         interuptEnable = data;
         return;
     }
+}
+
+void Bus::setLY(uint8_t value) {
+    fakeLY = value;
 }
 
 uint16_t Bus::read16(const uint16_t address) const {

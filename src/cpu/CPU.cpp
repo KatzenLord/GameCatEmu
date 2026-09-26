@@ -13,7 +13,18 @@ CPU::CPU(Bus &bus)
     reset();
 }
 
-uint16_t debugCurrentPC = 0;
+struct TraceEntry {
+    uint16_t pc;
+    uint8_t opcode;
+    uint16_t af;
+    uint16_t bc;
+    uint16_t de;
+    uint16_t hl;
+    uint16_t sp;
+};
+
+static std::array<TraceEntry, 32> traceHistory{};
+static size_t traceIndex = 0;
 
 void CPU::reset() {
     A = 0x01;
@@ -31,9 +42,23 @@ void CPU::reset() {
     halted = false;
     stopped = false;
 }
-
+static std::array<uint16_t, 16> pcHistory{};
+static size_t pcHistoryIndex = 0;
+static uint64_t stepCounter = 0;
 int CPU::step() {
     if (halted) {
+        return 4;
+    }
+
+    if (PC == 0xFFFF) {
+        std::cout << "PC BROKEN: PC=0xFFFF "
+                  << "SP=0x" << std::hex << std::uppercase << SP
+                  << " AF=0x" << getAF()
+                  << " BC=0x" << getBC()
+                  << " DE=0x" << getDE()
+                  << " HL=0x" << getHL()
+                  << std::dec << "\n";
+        halted = true;
         return 4;
     }
 
@@ -42,60 +67,51 @@ int CPU::step() {
         return interruptCycles;
     }
 
-    //pcHistory[pcHistoryIndex] = PC;
-    //pcHistoryIndex = (pcHistoryIndex + 1) % pcHistory.size();
-
-    //stepCounter++;
-
-    //if (stepCounter % 100000 == 0) {
-    //    std::cout << "Last PCs: ";
-    //    for (size_t i = 0; i < pcHistory.size(); i++) {
-    //        size_t index = (pcHistoryIndex + i) % pcHistory.size();
-    //        std::cout << "0x"
-    //                  << std::hex << std::uppercase
-    //                  << pcHistory[index] << " ";
-    //    }
-    //    std::cout << std::dec << "\n";
-    //}
-
     const uint16_t oldPC = PC;
-    debugCurrentPC = oldPC;
     const uint8_t opcode = fetch8();
 
-    if (oldPC == 0x02ED || oldPC == 0x02EF || oldPC == 0x02F0) {
-        printTrace(oldPC, opcode);
+    traceHistory[traceIndex] = TraceEntry{
+        oldPC,
+        opcode,
+        getAF(),
+        getBC(),
+        getDE(),
+        getHL(),
+        SP
+    };
+
+    traceIndex = (traceIndex + 1) % traceHistory.size();
+
+    if (oldPC == 0x001B) {
+        std::cout << "Reached 001B, last instructions:\n";
+
+        for (size_t i = 0; i < traceHistory.size(); i++) {
+            size_t index = (traceIndex + i) % traceHistory.size();
+            const auto& e = traceHistory[index];
+
+            std::cout << std::hex << std::uppercase << std::setfill('0')
+                      << "PC=" << std::setw(4) << e.pc
+                      << " OP=" << std::setw(2) << static_cast<int>(e.opcode)
+                      << " AF=" << std::setw(4) << e.af
+                      << " BC=" << std::setw(4) << e.bc
+                      << " DE=" << std::setw(4) << e.de
+                      << " HL=" << std::setw(4) << e.hl
+                      << " SP=" << std::setw(4) << e.sp
+                      << std::dec << "\n";
+        }
+
+        halted = true;
+        return 4;
     }
 
-    //printTrace(oldPC, opcode);
-    //if (oldPC == 0x279B) {
-    //    std::cout << "ENTER/FILL LOOP "
-    //              << "AF=" << std::hex << getAF()
-    //              << " BC=" << getBC()
-    //              << " DE=" << getDE()
-    //              << " HL=" << getHL()
-    //              << " SP=" << SP
-    //              << std::dec << "\n";
-    //}
-    //if (oldPC == 0x0038) {
-    //    std::cout << "ENTERED 0038 "
-    //              << "AF=" << std::hex << getAF()
-    //              << " BC=" << getBC()
-    //              << " DE=" << getDE()
-    //              << " HL=" << getHL()
-    //              << " SP=" << SP
-    //              << std::dec << "\n";
-    //    halted = true;
-    //    return 4;
-    //}
-
-
-    if (oldPC == 0x0040) {
-        std::cout << "ENTER VBLANK INTERRUPT\n";
+    if (oldPC == 0x0038 && opcode == 0xFF) {
+        std::cout << "RST 38 self-loop detected, stopping\n";
+        halted = true;
+        return 4;
     }
 
     if ((opcode & 0xC7) == 0xC7) {
-        uint16_t addr = opcode & 0x38;
-        return rst(addr);
+        return rst(opcode & 0x38, oldPC);
     }
 
     if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
@@ -139,10 +155,13 @@ int CPU::step() {
 
     switch (opcode) {
         case 0x00: return nop();
+        case 0x02: return ld_bc_a();
         case 0x0A: return ld_a_bc();
+        case 0x12: return ld_de_a();
         case 0x18: return jr_i8();
         case 0x19: return add_hl_de();
         case 0x1A: return ld_a_de();
+        case 0x22: return ld_hli_a();
         case 0x2A: return ld_a_hli();
         case 0x2F: return cpl();
         case 0x32: return ld_hld_a();
@@ -262,6 +281,18 @@ int CPU::jp_hl() {
     return 4;
 }
 
+int CPU::ld_bc_a() {
+    const uint16_t addr = getBC();
+    write8(addr, A);
+    return 8;
+}
+
+int CPU::ld_de_a() {
+    const uint16_t addr = getDE();
+    write8(addr, A);
+    return 8;
+}
+
 int CPU::ld_a_bc() {
     const uint16_t addr = getDE();
     A = read8(addr);
@@ -277,7 +308,14 @@ int CPU::ld_a_de() {
 int CPU::ld_a_hli() {
     const uint16_t addr = getHL();
     A = read8(addr);
-    setHL(addr+1);
+    setHL(static_cast<uint16_t>(addr + 1));
+    return 8;
+}
+
+int CPU::ld_hli_a() {
+    const uint16_t addr = getHL();
+    write8(addr, A);
+    setHL(static_cast<uint16_t>(addr + 1));
     return 8;
 }
 
@@ -289,45 +327,16 @@ int CPU::ld_hld_a() {
 }
 
 int CPU::ldh_c_a() {
-    const uint16_t instrPC = static_cast<uint16_t>(PC - 1);
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + C);
-
-    if (addr == 0xFF0F || addr == 0xFFFF) {
-        std::cout << "LDH (C) WRITE "
-                  << (addr == 0xFF0F ? "IF" : "IE")
-                  << " = 0x"
-                  << std::hex << std::uppercase
-                  << static_cast<int>(A)
-                  << " from PC=0x" << instrPC
-                  << std::dec << "\n";
-    }
     write8(addr, A);
 
     return 8;
 }
 
 int CPU::ldh_a8_a() {
-    const uint16_t instrPC = static_cast<uint16_t>(PC - 1); // PC stand nach Opcode-Fetch
     const uint8_t offset = fetch8();
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
-
-    if (addr == 0xFF0F || addr == 0xFFFF) {
-        std::cout << "LDH WRITE "
-                  << (addr == 0xFF0F ? "IF" : "IE")
-                  << " = 0x"
-                  << std::hex << std::uppercase
-                  << static_cast<int>(A)
-                  << " from PC=0x" << instrPC
-                  << std::dec << "\n";
-    }
-
     write8(addr, A);
-
-    //std::cout << std::hex << std::uppercase << std::setfill('0')
-    //          << "LDH ($" << std::setw(2) << static_cast<int>(offset)
-    //          << "),A -> [0x" << std::setw(4) << addr
-    //          << "] = 0x" << std::setw(2) << static_cast<int>(A)
-    //          << std::dec << "\n";
 
     return 12;
 }
@@ -337,28 +346,11 @@ int CPU::ldh_a_a8() {
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
     A = read8(addr);
 
-    //std::cout << std::hex << std::uppercase << std::setfill('0')
-    //          << "LDH A,($" << std::setw(2) << static_cast<int>(offset)
-    //          << ") -> [0x" << std::setw(4) << addr
-    //          << "] = 0x" << std::setw(2) << static_cast<int>(A)
-    //          << std::dec << "\n";
-
     return 12;
 }
 
 int CPU::ld_a16_a() {
-    const uint16_t instrPC = static_cast<uint16_t>(PC - 1); // PC nach Opcode-Fetch
     const uint16_t addr = fetch16();
-
-    if (addr == 0xFF0F || addr == 0xFFFF) {
-        std::cout << "LD WRITE "
-                  << (addr == 0xFF0F ? "IF" : "IE")
-                  << " = 0x"
-                  << std::hex << std::uppercase
-                  << static_cast<int>(A)
-                  << " from PC=0x" << instrPC
-                  << std::dec << "\n";
-    }
     write8(addr, A);
     return 16;
 }
@@ -394,7 +386,16 @@ int CPU::ret() {
 }
 
 int CPU::reti() {
-    PC = pop16();
+    std::cout << "RETI before pop SP=0x"
+          << std::hex << std::uppercase << SP
+          << std::dec << "\n";
+    const uint16_t returnPC = pop16();
+    std::cout << "RETI pop PC=0x"
+          << std::hex << std::uppercase << returnPC
+          << " SP after=0x" << SP
+          << std::dec << "\n";
+    PC = returnPC;
+
     interruptMasterEnable = true;
     return 16;
 }
@@ -443,9 +444,18 @@ int CPU::add_hl_de() {
     return 8;
 }
 
-int CPU::rst(uint16_t address) {
-    push16(address);
+int CPU::rst(uint16_t address, uint16_t oldPC) {
+    std::cout << "RST from PC=0x"
+          << std::hex << std::uppercase << oldPC
+          << " to=0x" << address
+          << " return=0x" << PC
+          << " SP before=0x" << SP
+          << std::dec << "\n";
+    push16(PC);
     PC = address;
+    std::cout << "RST SP after=0x"
+          << std::hex << std::uppercase << SP
+          << std::dec << "\n";
     return 16;
 }
 
@@ -536,6 +546,24 @@ int CPU::stepCB() {
         return swap_reg(reg);
     }
 
+    if ((opcode & 0xC0) == 0x40) {
+        const uint8_t bit = (opcode >> 3) & 0x07;
+        const uint8_t reg = opcode & 0x07;
+        return bit_reg(bit, reg);
+    }
+
+    if ((opcode & 0xC0) == 0x80) {
+        const uint8_t bit = (opcode >> 3) & 0x07;
+        const uint8_t reg = opcode & 0x07;
+        return res_reg(bit, reg);
+    }
+
+    if ((opcode & 0xC0) == 0xC0) {
+        const uint8_t bit = (opcode >> 3) & 0x07;
+        const uint8_t reg = opcode & 0x07;
+        return set_reg(bit, reg);
+    }
+
     std::cerr << "Unimplemented CB Opcode 0x"
         << std::hex << std::uppercase
         << static_cast<int>(opcode)
@@ -554,6 +582,33 @@ int CPU::swap_reg(uint8_t reg) {
     setFlag(Flag::N,false);
     setFlag(Flag::H, false);
     setFlag(Flag::C, false);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::bit_reg(uint8_t bit, uint8_t reg) {
+    const uint8_t value = readReg8(reg);
+    const bool isZero = (value & (1u << bit)) == 0;
+
+    setFlag(Flag::Z, isZero);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, true);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::res_reg(uint8_t bit, uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    value &= static_cast<uint8_t>(~(1u << bit));
+    writeReg8(reg, value);
+
+    return reg == 6 ? 16 : 8;
+}
+
+int CPU::set_reg(uint8_t bit, uint8_t reg) {
+    uint8_t value = readReg8(reg);
+    value |= static_cast<uint8_t>(1u << bit);
+    writeReg8(reg, value);
 
     return reg == 6 ? 16 : 8;
 }
@@ -815,11 +870,16 @@ int CPU::handleInterrupts() {
     interruptMasterEnable = false;
 
     if (pending & 0x01) {
+        std::cout << "VBLANK SERVICE push return PC=0x"
+              << std::hex << std::uppercase << PC
+              << " SP before=0x" << SP
+              << std::dec << "\n";
         write8(0xFF0F, iff & static_cast<uint8_t>(~0x01));
         push16(PC);
         PC = 0x0040;
-
-        std::cout << "ENTER VBLANK INTERRUPT\n";
+        std::cout << "ENTER VBLANK INTERRUPT SP after=0x"
+          << std::hex << std::uppercase << SP
+          << std::dec << "\n";
 
         return 20;
     }
