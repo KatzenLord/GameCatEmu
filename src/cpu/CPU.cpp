@@ -42,74 +42,35 @@ void CPU::reset() {
     halted = false;
     stopped = false;
 }
-static std::array<uint16_t, 16> pcHistory{};
-static size_t pcHistoryIndex = 0;
-static uint64_t stepCounter = 0;
 int CPU::step() {
-    if (halted) {
-        return 4;
-    }
+    const uint8_t ie = bus.read8(0xFFFF);
+    const uint8_t interruptFlags = bus.read8(0xFF0F);
+    const uint8_t pending = ie & interruptFlags & 0x1F;
 
-    if (PC == 0xFFFF) {
-        std::cout << "PC BROKEN: PC=0xFFFF "
-                  << "SP=0x" << std::hex << std::uppercase << SP
-                  << " AF=0x" << getAF()
-                  << " BC=0x" << getBC()
-                  << " DE=0x" << getDE()
-                  << " HL=0x" << getHL()
-                  << std::dec << "\n";
-        halted = true;
-        return 4;
+    if (halted) {
+        if (pending != 0) {
+            halted = false;
+        } else {
+            return 4;
+        }
     }
 
     const int interruptCycles = handleInterrupts();
-    if (interruptCycles != 0) {
+    if (interruptCycles > 0) {
         return interruptCycles;
     }
 
     const uint16_t oldPC = PC;
     const uint8_t opcode = fetch8();
 
-    traceHistory[traceIndex] = TraceEntry{
-        oldPC,
-        opcode,
-        getAF(),
-        getBC(),
-        getDE(),
-        getHL(),
-        SP
-    };
+    const int cycles = executeOpcodes(opcode, oldPC);
 
-    traceIndex = (traceIndex + 1) % traceHistory.size();
+    updateImeDelay();
 
-    if (oldPC == 0x001B) {
-        std::cout << "Reached 001B, last instructions:\n";
+    return cycles;
+}
 
-        for (size_t i = 0; i < traceHistory.size(); i++) {
-            size_t index = (traceIndex + i) % traceHistory.size();
-            const auto& e = traceHistory[index];
-
-            std::cout << std::hex << std::uppercase << std::setfill('0')
-                      << "PC=" << std::setw(4) << e.pc
-                      << " OP=" << std::setw(2) << static_cast<int>(e.opcode)
-                      << " AF=" << std::setw(4) << e.af
-                      << " BC=" << std::setw(4) << e.bc
-                      << " DE=" << std::setw(4) << e.de
-                      << " HL=" << std::setw(4) << e.hl
-                      << " SP=" << std::setw(4) << e.sp
-                      << std::dec << "\n";
-        }
-
-        halted = true;
-        return 4;
-    }
-
-    if (oldPC == 0x0038 && opcode == 0xFF) {
-        std::cout << "RST 38 self-loop detected, stopping\n";
-        halted = true;
-        return 4;
-    }
-
+int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
     if ((opcode & 0xC7) == 0xC7) {
         return rst(opcode & 0x38, oldPC);
     }
@@ -266,7 +227,7 @@ int CPU::nop() {
 int CPU::jr_i8() {
     int8_t offset = static_cast<int8_t>(fetch8());
 
-    PC = static_cast<uint8_t>(PC + offset);
+    PC = static_cast<uint16_t>(PC + offset);
     return 12;
 }
 
@@ -294,7 +255,7 @@ int CPU::ld_de_a() {
 }
 
 int CPU::ld_a_bc() {
-    const uint16_t addr = getDE();
+    const uint16_t addr = getBC();
     A = read8(addr);
     return 8;
 }
@@ -386,33 +347,23 @@ int CPU::ret() {
 }
 
 int CPU::reti() {
-    std::cout << "RETI before pop SP=0x"
-          << std::hex << std::uppercase << SP
-          << std::dec << "\n";
     const uint16_t returnPC = pop16();
-    std::cout << "RETI pop PC=0x"
-          << std::hex << std::uppercase << returnPC
-          << " SP after=0x" << SP
-          << std::dec << "\n";
     PC = returnPC;
 
     interruptMasterEnable = true;
+    imeEnableDelay=0;
+
     return 16;
 }
 
 int CPU::di() {
-    std::cout << "DI executed\n";
     interruptMasterEnable=false;
-    enableInterruptsNextInstruction=false;
+    imeEnableDelay=0;
     return 4;
 }
 
 int CPU::ei() {
-    std::cout << "EI executed\n";
-    // remove later
-    interruptMasterEnable=true;
-    // later delayen
-    //enableInterruptsNextInstruction = true;
+    imeEnableDelay = 2;
     return 4;
 }
 
@@ -784,7 +735,7 @@ int CPU::decodePopReg16(uint8_t opcode) {
 }
 
 int CPU::decodeJpCondition(uint8_t opcode) {
-    const uint8_t addr = fetch16();
+    const uint16_t addr = fetch16();
     const uint8_t condition = (opcode >> 3) & 0x03;
 
     bool shouldJump = false;
@@ -855,35 +806,47 @@ int CPU::decodeAluRegister(uint8_t opcode) {
 }
 
 int CPU::handleInterrupts() {
-    if (!interruptMasterEnable) {
-        return 0;
-    }
+    const uint8_t ie = bus.read8(0xFFFF);
+    const uint8_t interruptFlags = bus.read8(0xFF0F);
 
-    const uint8_t ie = read8(0xFFFF);
-    const uint8_t iff = read8(0xFF0F);
-    const uint8_t pending = ie & iff & 0x1F;
+    const uint8_t pending = ie & interruptFlags & 0x1F;
 
     if (pending == 0) {
         return 0;
     }
 
+    if (!interruptMasterEnable) {
+        return 0;
+    }
+
     interruptMasterEnable = false;
 
-    if (pending & 0x01) {
-        std::cout << "VBLANK SERVICE push return PC=0x"
-              << std::hex << std::uppercase << PC
-              << " SP before=0x" << SP
-              << std::dec << "\n";
-        write8(0xFF0F, iff & static_cast<uint8_t>(~0x01));
-        push16(PC);
-        PC = 0x0040;
-        std::cout << "ENTER VBLANK INTERRUPT SP after=0x"
-          << std::hex << std::uppercase << SP
-          << std::dec << "\n";
+    uint16_t vector = 0;
+    uint8_t mask = 0;
 
-        return 20;
+    if (pending & 0x01) {
+        vector = 0x0040;
+        mask = 0x01;
+    } else if (pending & 0x02) {
+        vector = 0x0048;
+        mask = 0x02;
+    } else if (pending & 0x04) {
+        vector = 0x0050;
+        mask = 0x04;
+    } else if (pending & 0x08) {
+        vector = 0x0058;
+        mask = 0x08;
+    } else if (pending & 0x10) {
+        vector = 0x0060;
+        mask = 0x10;
     }
-    return 0;
+
+    bus.write8(0xFF0F, interruptFlags & ~mask);
+
+    push16(PC);
+    PC = vector;
+
+    return 20;
 }
 
 int CPU::unimplemented(uint8_t opcode, uint16_t oldPC) {
@@ -910,6 +873,16 @@ void CPU::printTrace(uint16_t oldPC, uint8_t opcode) const {
           << " HL=" << std::setw(4) << getHL()
           << " SP=" << std::setw(4) << SP
           << std::dec << "\n";
+}
+
+void CPU::updateImeDelay() {
+    if (imeEnableDelay > 0) {
+        imeEnableDelay--;
+
+        if (imeEnableDelay == 0) {
+            interruptMasterEnable = true;
+        }
+    }
 }
 
 int CPU::halt() {

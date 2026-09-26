@@ -47,7 +47,7 @@ private:
     bool stopped = false;
 
     bool interruptMasterEnable;
-    bool enableInterruptsNextInstruction;
+    ushort imeEnableDelay;
 
     uint8_t fetch8();
     uint16_t fetch16();
@@ -142,6 +142,8 @@ private:
     int handleInterrupts();
     int unimplemented(uint8_t opcode, uint16_t oldPC);
     void printTrace(uint16_t oldPC, uint8_t opcode) const;
+    int executeOpcodes(uint8_t opcode, uint16_t oldPC);
+    void updateImeDelay();
 };
 
 #endif //GAMECATEMU_CPU_H
