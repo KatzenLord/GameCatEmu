@@ -21,7 +21,12 @@ public:
 
     uint16_t read16(uint16_t address) const;
     void write16(uint16_t address, uint16_t value);
+
+    uint8_t getLY() const;
     void setLY(uint8_t value);
+
+    uint8_t getPPUMode() const;
+    void setPPUMode(uint8_t value);
 
 private:
     Cartridge& cartridge;
@@ -34,9 +39,8 @@ private:
 
     uint8_t interuptEnable = 0;         // 0xFFFF
 
-    mutable uint8_t fakeLY = 0;
-
-
+    uint8_t ly = 0;
+    uint8_t ppuMode = 2;
 };
 
 #endif //GAMECATEMU_BUS_H

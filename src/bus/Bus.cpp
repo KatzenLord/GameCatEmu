@@ -13,16 +13,19 @@ Bus::Bus(Cartridge &cartridge)
 uint8_t joypSelect = 0x30;
 uint8_t Bus::read8(const uint16_t address) const {
     // Debug, delete me later
-    if (address == 0xFF44) {
-        return fakeLY;
-    }
     if (address == 0xFF00) {
         const uint8_t value = static_cast<uint8_t>(0xC0 | joypSelect | 0x0F);
         return value;
     }
 
 
-
+    if (address == 0xFF44) {
+        return ly;
+    }
+    if (address == 0xFF41) {
+        // STAT
+        return static_cast<uint8_t>((io[0x41] & 0xFC) | (ppuMode & 0x03));
+    }
     if (address <= 0x7FFF) {
         return cartridge.read(address);
     }
@@ -61,23 +64,16 @@ uint8_t Bus::read8(const uint16_t address) const {
 
 void Bus::write8(uint16_t address, uint8_t data) {
     // Debug, delete me
-    if (address == 0xFF44) {
-        fakeLY = 0;
-        return;
-    }
-    if (address == 0xFF80) {
-        std::cout << "WRITE FF80 = 0x"
-                  << std::hex << std::uppercase
-                  << static_cast<int>(data)
-                  << std::dec << "\n";
-    }
-
     if (address == 0xFF00) {
         joypSelect = data & 0x30;
         io[0] = data;
         return;
     }
 
+    if (address == 0xFF44) {
+        ly = 0;
+        return;
+    }
     if (address <= 0x7FFF) {
         cartridge.write(address, data);
         return;
@@ -122,7 +118,19 @@ void Bus::write8(uint16_t address, uint8_t data) {
 }
 
 void Bus::setLY(uint8_t value) {
-    fakeLY = value;
+    ly = value;
+}
+
+uint8_t Bus::getLY() const {
+    return ly;
+}
+
+void Bus::setPPUMode(uint8_t value) {
+    ppuMode = value & 0x03;
+}
+
+uint8_t Bus::getPPUMode() const {
+    return ppuMode;
 }
 
 uint16_t Bus::read16(const uint16_t address) const {

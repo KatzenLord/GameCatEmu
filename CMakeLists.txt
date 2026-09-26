@@ -12,6 +12,8 @@ add_executable(GameCatEmu
         src/bus/Bus.h
         src/cpu/CPU.cpp
         src/cpu/CPU.h
+        src/ppu/PPU.cpp
+        src/ppu/PPU.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)
