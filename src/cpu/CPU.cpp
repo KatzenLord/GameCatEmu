@@ -122,12 +122,12 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0x0A: return ld_a_bc();
         case 0x12: return ld_de_a();
         case 0x18: return jr_i8();
-        case 0x19: return add_hl_de();
         case 0x1A: return ld_a_de();
         case 0x22: return ld_hli_a();
         case 0x2A: return ld_a_hli();
         case 0x2F: return cpl();
         case 0x32: return ld_hld_a();
+        case 0x76: return halt();
         case 0xC3: return jp_u16();
         case 0xC6: return add_a_n8();
         case 0xC9: return ret();
@@ -381,20 +381,6 @@ int CPU::cpl() {
 int CPU::and_a_n8() {
     const uint8_t value = fetch8();
     and_a(value);
-    return 8;
-}
-
-int CPU::add_hl_de() {
-    const uint16_t hl = getHL();
-    const uint16_t de = getDE();
-
-    const uint32_t result = static_cast<uint32_t>(hl) + de;
-
-    setFlag(Flag::N, false);
-    setFlag(Flag::H, ((hl & 0x0FFF) + (de & 0x0FFF)) > 0x0FFF);
-    setFlag(Flag::C, result > 0xFFFF);
-
-    setHL(static_cast<uint16_t>(result));
     return 8;
 }
 
@@ -831,8 +817,8 @@ int CPU::decodeIncReg8(uint8_t opcode) {
     writeReg8(reg, newVal);
 
     setFlag(Flag::Z, newVal == 0);
-    setFlag(Flag::N, true);
-    setFlag(Flag::H, (oldVal & 0x0F) == 0x00);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, (oldVal & 0x0F) == 0x0F);
 
     return reg == 6 ? 8 : 4;
 }

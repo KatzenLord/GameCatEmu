@@ -118,7 +118,6 @@ private:
     int cpl();
     int and_a_n8();
     int add_a_n8();
-    int add_hl_de();
 
     int rst(uint16_t address, uint16_t oldPC);
 
