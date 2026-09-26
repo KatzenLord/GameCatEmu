@@ -106,6 +106,15 @@ int main(int argc, char *argv[]) {
 
     bool isRunning = true;
 
+    SDL_Texture* texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_ARGB8888,
+        SDL_TEXTUREACCESS_STREAMING,
+        160,
+        144
+    );
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+
     SDL_Event e;
     while (isRunning) {
         while (SDL_PollEvent(&e)) {
@@ -119,10 +128,18 @@ int main(int argc, char *argv[]) {
         }
         int cycles = cpu.step();
         ppu.step(cycles);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderClear(renderer);
-
-        SDL_RenderPresent(renderer);
+        if (ppu.frameReady()) {
+            SDL_UpdateTexture(
+                texture,
+                nullptr,
+                ppu.getFramebuffer().data(),
+                160 * sizeof(uint32_t)
+            );
+            SDL_RenderClear(renderer);
+            SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+            SDL_RenderPresent(renderer);
+            ppu.clearFrameReady();
+        }
     }
 
     SDL_DestroyRenderer(renderer);
