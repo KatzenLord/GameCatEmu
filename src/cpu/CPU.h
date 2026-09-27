@@ -131,6 +131,9 @@ private:
     int or_a_n8();
     int rlca();
     int rla();
+    int rrca();
+    int rra();
+    int daa();
 
     int rst(uint16_t address, uint16_t oldPC);
 

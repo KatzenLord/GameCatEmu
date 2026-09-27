@@ -131,12 +131,15 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0x07: return rlca();
         case 0x08: return ld_a16_sp();
         case 0x0A: return ld_a_bc();
+        case 0x0F: return rrca();
         case 0x10: return stop();
         case 0x12: return ld_de_a();
         case 0x17: return rla();
         case 0x18: return jr_i8();
         case 0x1A: return ld_a_de();
+        case 0x1F: return rra();
         case 0x22: return ld_hli_a();
+        case 0x27: return daa();
         case 0x2A: return ld_a_hli();
         case 0x3A: return ld_a_hld();
         case 0x2F: return cpl();
@@ -467,18 +470,78 @@ int CPU::rla() {
     return 4;
 }
 
+int CPU::rrca() {
+    uint8_t value = A;
+
+    const bool carry = value & 0x01;
+    const uint8_t result = (value >> 1) | (carry ? 0x80 : 0);
+
+    setFlag(Flag::Z, false);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
+    A = result;
+
+    return 4;
+}
+
+int CPU::rra() {
+    uint8_t value = A;
+
+    const bool oldCarry = getFlag(Flag::C);
+    const bool newCarry = value & 0x01;
+
+    const uint8_t result = (value >> 1) | (oldCarry ? 0x80 : 0);
+
+    setFlag(Flag::Z, false);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, newCarry);
+    A = result;
+
+    return 4;
+}
+
+int CPU::daa() {
+    const bool nFlag = getFlag(Flag::N);
+    const bool hFlag = getFlag(Flag::H);
+    const bool cFlag = getFlag(Flag::C);
+
+    uint8_t result = A;
+
+    uint8_t adjustment = 0x00;
+
+    if (nFlag) {
+        if (hFlag) {
+            adjustment += 0x6;
+        }
+        if (cFlag) {
+            adjustment += 0x60;
+        }
+        result -= adjustment;
+
+    } else {
+        if (hFlag || (result & 0xF) > 0x9 ) {
+            adjustment += 0x6;
+        }
+        if (cFlag || result > 0x99) {
+            adjustment += 0x60;
+            setFlag(Flag::C, true);
+        }
+        result += adjustment;
+    }
+
+    setFlag(Flag::Z, result == 0);
+    setFlag(Flag::H, false);
+
+    A = result;
+
+    return 4;
+}
+
 int CPU::rst(uint16_t address, uint16_t oldPC) {
-    std::cout << "RST from PC=0x"
-          << std::hex << std::uppercase << oldPC
-          << " to=0x" << address
-          << " return=0x" << PC
-          << " SP before=0x" << SP
-          << std::dec << "\n";
     push16(PC);
     PC = address;
-    std::cout << "RST SP after=0x"
-          << std::hex << std::uppercase << SP
-          << std::dec << "\n";
     return 16;
 }
 
@@ -663,7 +726,7 @@ int CPU::rlc_reg(uint8_t reg) {
 
 int CPU::rrc_reg(uint8_t reg) {
     uint8_t value = readReg8(reg);
-    bool carry = value & 0x80;
+    bool carry = value & 0x01;
 
     value = (value >> 1) | (carry ? 0x80 : 0);
 
@@ -699,7 +762,7 @@ int CPU::rr_reg(uint8_t reg) {
     uint8_t value = readReg8(reg);
 
     bool oldCarry = getFlag(Flag::C);
-    bool newCarry = value & 0x80;
+    bool newCarry = value & 0x01;
 
     value = (value >> 1) | (oldCarry ? 0x80 : 0);
 
