@@ -15,6 +15,10 @@ public:
     void reset();
     int step();
 
+    void wakeUpJoyPad() {
+        joypadWakeUp = true;
+    }
+
     bool isHalted() const {
         return halted;
     }
@@ -45,6 +49,8 @@ private:
 
     bool halted = false;
     bool stopped = false;
+
+    bool joypadWakeUp = false;
 
     bool interruptMasterEnable;
     ushort imeEnableDelay;
@@ -94,6 +100,7 @@ private:
     // normal instructions
     int nop();
     int halt();
+    int stop();
     int jr_i8();
     int jp_u16();
     int jp_hl();
@@ -102,6 +109,7 @@ private:
     int ld_a_bc();
     int ld_a_de();
     int ld_a_hli();
+    int ld_a_hld();
     int ld_hli_a();
     int ld_hld_a();
     int ldh_c_a();
@@ -109,6 +117,7 @@ private:
     int ldh_a_a8();
     int ld_a16_a();
     int ld_a_a16();
+    int ld_a16_sp();
     int cp_u8();
     int call_u16();
     int ret();
@@ -118,6 +127,10 @@ private:
     int cpl();
     int and_a_n8();
     int add_a_n8();
+    int sub_a_n8();
+    int or_a_n8();
+    int rlca();
+    int rla();
 
     int rst(uint16_t address, uint16_t oldPC);
 

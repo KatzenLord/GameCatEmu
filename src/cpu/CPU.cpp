@@ -43,6 +43,15 @@ void CPU::reset() {
     stopped = false;
 }
 int CPU::step() {
+    if (stopped) {
+        if (joypadWakeUp) {
+            stopped = false;
+            joypadWakeUp = false;
+        } else {
+            return 4;
+        }
+    }
+
     const uint8_t ie = bus.read8(0xFFFF);
     const uint8_t interruptFlags = bus.read8(0xFF0F);
     const uint8_t pending = ie & interruptFlags & 0x1F;
@@ -119,12 +128,17 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
     switch (opcode) {
         case 0x00: return nop();
         case 0x02: return ld_bc_a();
+        case 0x07: return rlca();
+        case 0x08: return ld_a16_sp();
         case 0x0A: return ld_a_bc();
+        case 0x10: return stop();
         case 0x12: return ld_de_a();
+        case 0x17: return rla();
         case 0x18: return jr_i8();
         case 0x1A: return ld_a_de();
         case 0x22: return ld_hli_a();
         case 0x2A: return ld_a_hli();
+        case 0x3A: return ld_a_hld();
         case 0x2F: return cpl();
         case 0x32: return ld_hld_a();
         case 0x76: return halt();
@@ -133,6 +147,7 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0xC9: return ret();
         case 0xCB: return stepCB();
         case 0xCD: return call_u16();
+        case 0xD6: return sub_a_n8();
         case 0xD9: return reti();
         case 0xE0: return ldh_a8_a();
         case 0xE2: return ldh_c_a();
@@ -141,6 +156,7 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0xEA: return ld_a16_a();
         case 0xF0: return ldh_a_a8();
         case 0xF3: return di();
+        case 0xF6: return or_a_n8();
         case 0xFA: return ld_a_a16();
         case 0xFB: return ei();
         case 0xFE: return cp_u8();
@@ -276,6 +292,13 @@ int CPU::ld_a_hli() {
     return 8;
 }
 
+int CPU::ld_a_hld() {
+    const uint16_t addr = getHL();
+    A = read8(addr);
+    setHL(static_cast<uint16_t>(addr - 1));
+    return 8;
+}
+
 int CPU::ld_hli_a() {
     const uint16_t addr = getHL();
     write8(addr, A);
@@ -324,6 +347,17 @@ int CPU::ld_a_a16() {
     A = read8(addr);
 
     return 16;
+}
+
+int CPU::ld_a16_sp() {
+    const uint16_t addr = fetch16();
+    const uint8_t valueLow  = static_cast<uint8_t>(SP & 0xFF);
+    const uint8_t valueHigh = static_cast<uint8_t>((SP >> 8) & 0xFF);
+
+    write8(addr, valueLow);
+    write8(addr + 1, valueHigh);
+
+    return 20;
 }
 
 int CPU::cp_u8() {
@@ -385,17 +419,52 @@ int CPU::and_a_n8() {
 }
 
 int CPU::add_a_n8() {
-    const uint8_t value = read8(PC++);
-    const uint16_t res = A + value;
-
-    setFlag(Flag::Z, res == 0);
-    setFlag(Flag::N, false);
-    setFlag(Flag::H, ((A & 0x0F) + (value & 0x0F)) > 0x0F);
-    setFlag(Flag::C, res > 0xFF);
-
-    A = static_cast<uint8_t>(res);
-
+    const uint8_t value = fetch8();
+    add_a(value);
     return 8;
+}
+
+int CPU::sub_a_n8() {
+    const uint8_t value = fetch8();
+    sub_a(value);
+    return 8;
+}
+
+int CPU::or_a_n8() {
+    const uint8_t value = fetch8();
+    or_a(value);
+    return 8;
+}
+
+int CPU::rlca() {
+    const uint8_t value = A;
+    const bool carry = value & 0x80;
+    const uint8_t result = (value << 1) | (carry ? 1: 0);
+
+    setFlag(Flag::Z, false);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, carry);
+    A = result;
+
+    return 4;
+}
+
+int CPU::rla() {
+    uint8_t value = A;
+
+    const bool oldCarry = getFlag(Flag::C);
+    const bool newCarry = value & 0x80;
+
+    const uint8_t result = (value << 1) | (oldCarry ? 1: 0);
+
+    setFlag(Flag::Z, false);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, newCarry);
+    A = result;
+
+    return 4;
 }
 
 int CPU::rst(uint16_t address, uint16_t oldPC) {
@@ -1069,5 +1138,11 @@ void CPU::updateImeDelay() {
 
 int CPU::halt() {
     halted = true;
+    return 4;
+}
+
+int CPU::stop() {
+    fetch8();
+    stopped = true;
     return 4;
 }
