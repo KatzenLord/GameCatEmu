@@ -96,6 +96,7 @@ private:
     int decodeJpCondition(uint8_t opcode);
     int decodeRetCondition(uint8_t opcode);
     int decodeAddHLReg16(uint8_t opcode);
+    int decodeCallCondition(uint8_t opcode);
 
     // normal instructions
     int nop();
@@ -125,6 +126,8 @@ private:
     int di();
     int ei();
     int cpl();
+    int ccf();
+    int scf();
     int and_a_n8();
     int add_a_n8();
     int sub_a_n8();

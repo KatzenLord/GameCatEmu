@@ -113,6 +113,9 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
     if ((opcode & 0xE7) == 0xC2)
         return decodeJpCondition(opcode);
 
+    if ((opcode & 0xE7) == 0xC4)
+        return decodeCallCondition(opcode);
+
     if ((opcode & 0xCF) == 0x0B)
         return decodeDecReg16(opcode);
 
@@ -144,6 +147,8 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0x3A: return ld_a_hld();
         case 0x2F: return cpl();
         case 0x32: return ld_hld_a();
+        case 0x37: return scf();
+        case 0x3F: return ccf();
         case 0x76: return halt();
         case 0xC3: return jp_u16();
         case 0xC6: return add_a_n8();
@@ -412,6 +417,20 @@ int CPU::cpl() {
     setFlag(Flag::N, true);
     setFlag(Flag::H, true);
 
+    return 4;
+}
+
+int CPU::ccf() {
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, !getFlag(Flag::C));
+    return 4;
+}
+
+int CPU::scf() {
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, false);
+    setFlag(Flag::C, true);
     return 4;
 }
 
@@ -1085,6 +1104,25 @@ int CPU::decodeAddHLReg16(uint8_t opcode) {
     setHL(static_cast<uint16_t>(res));
 
     return 8;
+}
+
+int CPU::decodeCallCondition(uint8_t opcode) {
+    uint16_t addr = fetch16();
+    const uint8_t condition = (opcode >> 3) & 0x03;
+
+    bool shouldCall = false;
+    switch (condition) {
+        case 0: shouldCall = !getFlag(Flag::Z); break;
+        case 1: shouldCall = getFlag(Flag::Z); break;
+        case 2: shouldCall = !getFlag(Flag::C); break;
+        case 3: shouldCall = getFlag(Flag::C); break;
+    }
+    if (shouldCall) {
+        push16(PC);
+        PC = addr;
+        return 24;
+    }
+    return 12;
 }
 
 int CPU::decodeRegImmediate(uint8_t opcode) {
