@@ -81,7 +81,7 @@ int CPU::step() {
 
 int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
     if ((opcode & 0xC7) == 0xC7) {
-        return rst(opcode & 0x38, oldPC);
+        return rst(opcode & 0x38);
     }
     if ((opcode & 0xCF) == 0x09) {
         return decodeAddHLReg16(opcode);
@@ -155,16 +155,23 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
         case 0xC9: return ret();
         case 0xCB: return stepCB();
         case 0xCD: return call_u16();
+        case 0xCE: return adc_a_n8();
         case 0xD6: return sub_a_n8();
         case 0xD9: return reti();
+        case 0xDE: return sbc_a_n8();
         case 0xE0: return ldh_a8_a();
         case 0xE2: return ldh_c_a();
         case 0xE6: return and_a_n8();
+        case 0xE8: return add_sp_e8();
         case 0xE9: return jp_hl();
         case 0xEA: return ld_a16_a();
+        case 0xEE: return xor_a_n8();
         case 0xF0: return ldh_a_a8();
+        case 0xF2: return ldh_a_c();
         case 0xF3: return di();
         case 0xF6: return or_a_n8();
+        case 0xF8: return ld_hl_spe8();
+        case 0xF9: return ld_sp_hl();
         case 0xFA: return ld_a_a16();
         case 0xFB: return ei();
         case 0xFE: return cp_u8();
@@ -328,6 +335,14 @@ int CPU::ldh_c_a() {
     return 8;
 }
 
+int CPU::ldh_a_c() {
+    const uint16_t addr = static_cast<uint16_t>(0xFF00u + C);
+    const uint8_t value = read8(addr);
+    A = value;
+
+    return 8;
+}
+
 int CPU::ldh_a8_a() {
     const uint8_t offset = fetch8();
     const uint16_t addr = static_cast<uint16_t>(0xFF00u + offset);
@@ -446,15 +461,33 @@ int CPU::add_a_n8() {
     return 8;
 }
 
+int CPU::adc_a_n8() {
+    const uint8_t value = fetch8();
+    adc_a(value);
+    return 8;
+}
+
 int CPU::sub_a_n8() {
     const uint8_t value = fetch8();
     sub_a(value);
     return 8;
 }
 
+int CPU::sbc_a_n8() {
+    const uint8_t value = fetch8();
+    sbc_a(value);
+    return 8;
+}
+
 int CPU::or_a_n8() {
     const uint8_t value = fetch8();
     or_a(value);
+    return 8;
+}
+
+int CPU::xor_a_n8() {
+    const uint8_t value = fetch8();
+    xor_a(value);
     return 8;
 }
 
@@ -558,7 +591,40 @@ int CPU::daa() {
     return 4;
 }
 
-int CPU::rst(uint16_t address, uint16_t oldPC) {
+int CPU::add_sp_e8() {
+    const int8_t value = static_cast<int8_t>(fetch8());
+    const uint16_t oldSP = SP;
+    const uint16_t result = static_cast<uint16_t>(oldSP + value);
+
+    setFlag(Flag::Z, false);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((oldSP & 0x0F) + (static_cast<uint8_t>(value) & 0x0F)) > 0x0F);
+    setFlag(Flag::C, ((oldSP & 0xFF) + static_cast<uint8_t>(value)) > 0xFF);
+    SP = result;
+
+    return 16;
+}
+
+int CPU::ld_hl_spe8() {
+    const int8_t value = static_cast<int8_t>(fetch8());
+    const uint16_t oldSP = SP;
+    const uint16_t result = static_cast<uint16_t>(oldSP + value);
+
+    setFlag(Flag::Z, false);
+    setFlag(Flag::N, false);
+    setFlag(Flag::H, ((oldSP & 0x0F) + (static_cast<uint8_t>(value) & 0x0F)) > 0x0F);
+    setFlag(Flag::C, ((oldSP & 0xFF) + static_cast<uint8_t>(value)) > 0xFF);
+    setHL(result);
+
+    return 12;
+}
+
+int CPU::ld_sp_hl() {
+    SP = getHL();
+    return 8;
+}
+
+int CPU::rst(uint16_t address) {
     push16(PC);
     PC = address;
     return 16;

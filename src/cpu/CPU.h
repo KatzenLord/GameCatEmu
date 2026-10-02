@@ -114,6 +114,7 @@ private:
     int ld_hli_a();
     int ld_hld_a();
     int ldh_c_a();
+    int ldh_a_c();
     int ldh_a8_a();
     int ldh_a_a8();
     int ld_a16_a();
@@ -130,15 +131,21 @@ private:
     int scf();
     int and_a_n8();
     int add_a_n8();
+    int adc_a_n8();
     int sub_a_n8();
+    int sbc_a_n8();
     int or_a_n8();
+    int xor_a_n8();
     int rlca();
     int rla();
     int rrca();
     int rra();
     int daa();
+    int add_sp_e8();
+    int ld_hl_spe8();
+    int ld_sp_hl();
 
-    int rst(uint16_t address, uint16_t oldPC);
+    int rst(uint16_t address);
 
     // ALU operations
     void add_a(uint8_t value);
