@@ -7,6 +7,7 @@
 #include "cartridge/Cartridge.h"
 #include "cpu/CPU.h"
 #include "ppu/PPU.h"
+#include "timer/Timer.h"
 //constexpr int MAX_INSTRUCTIONS = 2'000'000;
 //static int frameCycles = 0;
 //static int scanlineCycles = 0;
@@ -35,6 +36,7 @@ int main(int argc, char *argv[]) {
 
     Bus bus(cartridge);
     CPU cpu(bus);
+    Timer timer(bus);
     PPU ppu(bus);
 
     //for (int i = 0; i < MAX_INSTRUCTIONS && !cpu.isHalted(); ++i) {
@@ -127,6 +129,8 @@ int main(int argc, char *argv[]) {
             }
         }
         int cycles = cpu.step();
+
+        timer.tick(cycles);
         ppu.step(cycles);
         if (ppu.frameReady()) {
             SDL_UpdateTexture(

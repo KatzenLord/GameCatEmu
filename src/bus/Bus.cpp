@@ -18,6 +18,9 @@ uint8_t Bus::read8(const uint16_t address) const {
         return value;
     }
 
+    if (address == 0xFF04) {
+        return div;
+    }
 
     if (address == 0xFF44) {
         return ly;
@@ -67,6 +70,11 @@ void Bus::write8(uint16_t address, uint8_t data) {
     if (address == 0xFF00) {
         joypSelect = data & 0x30;
         io[0] = data;
+        return;
+    }
+
+    if (address == 0xFF04) {
+        divResetRequested = true;
         return;
     }
 
@@ -143,4 +151,16 @@ uint16_t Bus::read16(const uint16_t address) const {
 void Bus::write16(const uint16_t address, uint16_t data) {
     write8(address, static_cast<uint8_t>(data & 0x00FF));
     write8(address + 1, static_cast<uint8_t>(data >> 8) & 0x00FF);
+}
+
+void Bus::setDIV(uint8_t value) {
+    div = value;
+}
+
+bool Bus::consumeDivResetRequest() {
+    if (!divResetRequested) {
+        return false;
+    }
+    divResetRequested = false;
+    return true;
 }

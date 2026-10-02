@@ -28,6 +28,8 @@ public:
     uint8_t getPPUMode() const;
     void setPPUMode(uint8_t value);
 
+    void setDIV(uint8_t value);
+    bool consumeDivResetRequest();
 private:
     Cartridge& cartridge;
 
@@ -41,6 +43,10 @@ private:
 
     uint8_t ly = 0;
     uint8_t ppuMode = 2;
+
+    uint8_t div = 0;
+    bool divResetRequested = false;
+
 };
 
 #endif //GAMECATEMU_BUS_H
