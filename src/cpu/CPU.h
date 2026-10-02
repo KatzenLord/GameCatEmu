@@ -50,6 +50,8 @@ private:
     bool halted = false;
     bool stopped = false;
 
+    bool haltBug;
+
     bool joypadWakeUp = false;
 
     bool interruptMasterEnable;

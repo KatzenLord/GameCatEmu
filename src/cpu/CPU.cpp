@@ -7,6 +7,7 @@
 #include <charconv>
 #include <iomanip>
 #include <iostream>
+#include <oneapi/tbb/task_arena.h>
 
 CPU::CPU(Bus &bus)
     : bus(bus){
@@ -41,6 +42,13 @@ void CPU::reset() {
 
     halted = false;
     stopped = false;
+
+    haltBug = false;
+
+    interruptMasterEnable = false;
+    imeEnableDelay = 0;
+
+    joypadWakeUp = false;
 }
 int CPU::step() {
     if (stopped) {
@@ -52,8 +60,8 @@ int CPU::step() {
         }
     }
 
-    const uint8_t ie = bus.read8(0xFFFF);
-    const uint8_t interruptFlags = bus.read8(0xFF0F);
+    const uint8_t ie = read8(0xFFFF);
+    const uint8_t interruptFlags = read8(0xFF0F);
     const uint8_t pending = ie & interruptFlags & 0x1F;
 
     if (halted) {
@@ -181,7 +189,15 @@ int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
 }
 
 uint8_t CPU::fetch8() {
-    return bus.read8(PC++);
+    const uint8_t value = read8(PC);
+
+    if (haltBug) {
+        haltBug = false;
+    } else {
+        PC++;
+    }
+
+    return value;
 }
 
 uint16_t CPU::fetch16() {
@@ -633,7 +649,7 @@ int CPU::rst(uint16_t address) {
 void CPU::add_a(uint8_t value) {
     uint16_t result = static_cast<uint16_t>(A) + value;
 
-    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::Z, static_cast<uint8_t>(result) == 0);
     setFlag(Flag::N, false);
     setFlag(Flag::H, ((A & 0x0F) + (value & 0x0F)) > 0x0F);
     setFlag(Flag::C, result > 0xFF);
@@ -644,7 +660,7 @@ void CPU::adc_a(uint8_t value) {
     uint8_t carry = getFlag(Flag::C) ? 1 : 0;
     uint16_t result = static_cast<uint16_t>(A) + value + carry;
 
-    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::Z, static_cast<uint8_t>(result) == 0);
     setFlag(Flag::N, false);
     setFlag(Flag::H, ((A & 0x0F) + (value & 0x0F)+carry) > 0x0F);
     setFlag(Flag::C, result > 0xFF);
@@ -654,10 +670,10 @@ void CPU::adc_a(uint8_t value) {
 void CPU::sub_a(uint8_t value) {
     uint8_t result = static_cast<uint8_t>(A - value);
 
-    setFlag(Flag::Z, A == 0);
+    setFlag(Flag::Z, result == 0);
     setFlag(Flag::N, true);
     setFlag(Flag::H, ((A & 0x0F)) < (value & 0x0F));
-    setFlag(Flag::C, result < value);
+    setFlag(Flag::C, A < value);
     A = result;
 }
 
@@ -882,7 +898,7 @@ int CPU::sra_reg(uint8_t reg) {
     bool carry = value & 0x01;
     uint8_t msb = value & 0x80;
 
-    value = (value >> 8) | msb;
+    value = (value >> 1) | msb;
 
     writeReg8(reg, value);
 
@@ -1022,7 +1038,7 @@ int CPU::decodeDecReg8(uint8_t opcode) {
     setFlag(Flag::N, true);
     setFlag(Flag::H, (oldVal & 0x0F) == 0x00);
 
-    return reg == 6 ? 8 : 4;
+    return reg == 6 ? 12 : 4;
 }
 
 int CPU::decodeIncReg8(uint8_t opcode) {
@@ -1037,7 +1053,7 @@ int CPU::decodeIncReg8(uint8_t opcode) {
     setFlag(Flag::N, false);
     setFlag(Flag::H, (oldVal & 0x0F) == 0x0F);
 
-    return reg == 6 ? 8 : 4;
+    return reg == 6 ? 12 : 4;
 }
 
 int CPU::decodeIncReg16(uint8_t opcode) {
@@ -1224,8 +1240,8 @@ int CPU::decodeAluRegister(uint8_t opcode) {
 }
 
 int CPU::handleInterrupts() {
-    const uint8_t ie = bus.read8(0xFFFF);
-    const uint8_t interruptFlags = bus.read8(0xFF0F);
+    const uint8_t ie = read8(0xFFFF);
+    const uint8_t interruptFlags = read8(0xFF0F);
 
     const uint8_t pending = ie & interruptFlags & 0x1F;
 
@@ -1268,7 +1284,7 @@ int CPU::handleInterrupts() {
 }
 
 int CPU::unimplemented(uint8_t opcode, uint16_t oldPC) {
-    std::cerr << "Unimplemented Opcode 0x"
+    std::cerr << "Unimplemented or Unused Opcode 0x"
         << std::uppercase << std::hex
         << std::setfill('0') << std::setw(2)
         << static_cast<int>(opcode)
@@ -1304,7 +1320,16 @@ void CPU::updateImeDelay() {
 }
 
 int CPU::halt() {
-    halted = true;
+    const uint8_t pending =
+        read8(0xFFFF) &
+        read8(0xFF0F) &
+        0x1F;
+
+    if (!interruptMasterEnable && pending != 0) {
+        haltBug = true;
+    } else {
+        halted = true;
+    }
     return 4;
 }
 
