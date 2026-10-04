@@ -16,6 +16,13 @@ add_executable(GameCatEmu
         src/ppu/PPU.h
         src/timer/Timer.cpp
         src/timer/Timer.h
+        src/input/InputHandler.cpp
+        src/input/InputHandler.h
+        src/input/InputMapper.cpp
+        src/input/InputMapper.h
+        src/input/InputState.h
+        src/joypad/Joypad.cpp
+        src/joypad/Joypad.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)

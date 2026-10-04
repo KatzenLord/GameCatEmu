@@ -6,6 +6,8 @@
 #include "bus/Bus.h"
 #include "cartridge/Cartridge.h"
 #include "cpu/CPU.h"
+#include "input/InputHandler.h"
+#include "input/InputMapper.h"
 #include "ppu/PPU.h"
 #include "timer/Timer.h"
 //constexpr int MAX_INSTRUCTIONS = 2'000'000;
@@ -34,36 +36,13 @@ int main(int argc, char *argv[]) {
     std::cout << "ROM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.romSize) << std::dec << " -> " << header.romSizeString << std::endl;
     std::cout << "RAM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.ramSize) << std::dec << " -> " << header.ramSizeString << std::endl;
 
-    Bus bus(cartridge);
+    InputHandler inputHandler{};
+    Joypad joypad;
+    Bus bus(cartridge, joypad);
     CPU cpu(bus);
     Timer timer(bus);
     PPU ppu(bus);
-
-    //for (int i = 0; i < MAX_INSTRUCTIONS && !cpu.isHalted(); ++i) {
-    //    int cycles = cpu.step();
-//
-    //    scanlineCycles += cycles;
-    //    frameCycles += cycles;
-//
-    //    if (scanlineCycles >= 456) {
-    //        scanlineCycles -= 456;
-//
-    //        ly++;
-//
-    //        if (ly > 153) {
-    //            ly = 0;
-    //        }
-//
-    //        bus.setLY(ly);
-//
-    //        if (ly == 144) {
-    //            bus.write8(0xFF0F, bus.read8(0xFF0F) | 0x01);
-    //        }
-    //    }
-//
-    //    //std::cout << "Step " << i
-    //    //    << " cycles=" << cycles << std::endl;
-    //}
+    InputMapper inputMapper(inputHandler);
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cout << "SDL could not be Initialized: " << SDL_GetError() << std::endl;
@@ -117,9 +96,11 @@ int main(int argc, char *argv[]) {
     );
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
 
+
     SDL_Event e;
     while (isRunning) {
         while (SDL_PollEvent(&e)) {
+            inputHandler.handleEvent(e);
             if (e.type == SDL_EVENT_QUIT) {
                 isRunning = false;
             }
@@ -128,6 +109,10 @@ int main(int argc, char *argv[]) {
                 isRunning = false;
             }
         }
+
+        const InputState state = inputMapper.getState();
+        joypad.setInputState(state);
+
         int cycles = cpu.step();
 
         timer.tick(cycles);

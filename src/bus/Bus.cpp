@@ -7,15 +7,13 @@
 #include <iostream>
 
 
-Bus::Bus(Cartridge &cartridge)
-    : cartridge(cartridge){
+Bus::Bus(Cartridge &cartridge, Joypad &joypad)
+    : cartridge(cartridge), joypad(joypad){
 }
-uint8_t joypSelect = 0x30;
+
 uint8_t Bus::read8(const uint16_t address) const {
-    // Debug, delete me later
     if (address == 0xFF00) {
-        const uint8_t value = static_cast<uint8_t>(0xC0 | joypSelect | 0x0F);
-        return value;
+        return joypad.read();
     }
 
     if (address == 0xFF04) {
@@ -66,10 +64,8 @@ uint8_t Bus::read8(const uint16_t address) const {
 }
 
 void Bus::write8(uint16_t address, uint8_t data) {
-    // Debug, delete me
     if (address == 0xFF00) {
-        joypSelect = data & 0x30;
-        io[0] = data;
+        joypad.write(data);
         return;
     }
 

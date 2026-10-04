@@ -11,10 +11,12 @@
 #include <cstdint>
 
 #include "../cartridge/Cartridge.h"
+#include "../joypad/Joypad.h"
+
 
 class Bus {
 public:
-    explicit Bus(Cartridge& cartridge);
+    explicit Bus(Cartridge& cartridge, Joypad& joypad);
 
     uint8_t read8(uint16_t address) const;
     void write8(uint16_t address, uint8_t value);
@@ -32,6 +34,7 @@ public:
     bool consumeDivResetRequest();
 private:
     Cartridge& cartridge;
+    Joypad& joypad;
 
     std::array<uint8_t, 0x2000> vram{}; // 0x0000 - 0x9FFF
     std::array<uint8_t, 0x2000> wram{}; // 0xC000 - 0xDFFF
