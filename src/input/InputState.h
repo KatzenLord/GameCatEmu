@@ -5,8 +5,6 @@
 #ifndef GAMECATEMU_INPUTSTATE_H
 #define GAMECATEMU_INPUTSTATE_H
 
-#endif //GAMECATEMU_INPUTSTATE_H
-
 #pragma once
 
 struct InputState {
@@ -20,3 +18,5 @@ struct InputState {
     bool start = false;
     bool select = false;
 };
+
+#endif //GAMECATEMU_INPUTSTATE_H

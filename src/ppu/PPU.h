@@ -31,14 +31,14 @@ private:
 
     int scanlineCycles = 0;
     int windowLineCounter = 0;
-    void requestVBlankInterrupt();
     std::array<uint32_t, ScreenWidth * ScreenHeight> framebuffer{};
     std::array<uint8_t, ScreenWidth * ScreenHeight> bgColorIds{};
 
     bool frameReadyFlag = false;
 
     void updateLYC();
-    void requestSTATInterrupt();
+    void requestSTATInterrupt() const;
+    void requestVBlankInterrupt() const;
 
     void renderScanline(int y);
     void renderSpritesForScanline(int y);

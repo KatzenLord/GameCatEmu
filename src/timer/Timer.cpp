@@ -57,8 +57,7 @@ void Timer::incrementTIMA() {
 
         bus.write8(0xFF05, tma);
 
-        const uint8_t interruptFlags = bus.read8(0xFF0F);
-        bus.write8(0xFF0F, interruptFlags | 0x04);
+        bus.requestInterrupt(Interrupt::Timer);
     } else {
         bus.write8(0xFF05, static_cast<uint8_t>(tima + 1));
     }

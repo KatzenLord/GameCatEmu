@@ -10,9 +10,9 @@
 #include <array>
 #include <cstdint>
 
+#include "Interrupt.h"
 #include "../cartridge/Cartridge.h"
 #include "../joypad/Joypad.h"
-
 
 class Bus {
 public:
@@ -32,6 +32,8 @@ public:
 
     void setDIV(uint8_t value);
     bool consumeDivResetRequest();
+
+    void requestInterrupt(Interrupt interrupt);
 private:
     Cartridge& cartridge;
     Joypad& joypad;

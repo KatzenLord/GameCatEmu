@@ -191,9 +191,12 @@ std::array<uint32_t, ScreenWidth * ScreenHeight> PPU::getFramebuffer() const {
     return framebuffer;
 }
 
-void PPU::requestVBlankInterrupt() {
-    const uint8_t currentIF = bus.read8(0xFF0F);
-    bus.write8(0xFF0F, currentIF | 0x01);
+void PPU::requestVBlankInterrupt() const {
+    bus.requestInterrupt(Interrupt::VBlank);
+}
+
+void PPU::requestSTATInterrupt() const {
+    bus.requestInterrupt(Interrupt::LCDStat);
 }
 
 uint8_t PPU::applyOBJPalette(uint8_t colorId, bool useOBP1) const {
@@ -376,10 +379,7 @@ void PPU::updateLYC() {
     bus.write8(0xFF41, stat);
 }
 
-void PPU::requestSTATInterrupt() {
-    const uint8_t currentIF = bus.read8(0xFF0F);
-    bus.write8(0xFF0F, currentIF | 0x02);
-}
+
 
 void PPU::debugTileMap() {
     const uint8_t lcdc = bus.read8(0xFF40);

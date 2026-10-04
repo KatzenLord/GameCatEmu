@@ -111,7 +111,9 @@ int main(int argc, char *argv[]) {
         }
 
         const InputState state = inputMapper.getState();
-        joypad.setInputState(state);
+        if (joypad.setInputState(state)) {
+            bus.requestInterrupt(Interrupt::Joypad);
+        }
 
         int cycles = cpu.step();
 

@@ -172,3 +172,11 @@ bool Bus::consumeDivResetRequest() {
     divResetRequested = false;
     return true;
 }
+
+void Bus::requestInterrupt(Interrupt interrupt) {
+    uint8_t interruptFlags = read8(0xFF0F);
+
+    interruptFlags |= (1 << static_cast<uint8_t>(interrupt));
+
+    write8(0xFF0F, interruptFlags);
+}
