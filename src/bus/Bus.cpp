@@ -73,6 +73,18 @@ void Bus::write8(uint16_t address, uint8_t data) {
         return;
     }
 
+    if (address == 0xFF46) {
+        const uint16_t source =
+            static_cast<uint16_t>(data) << 8;
+
+        for (uint16_t i = 0; i < 0xA0; i++) {
+            oam[i] = read8(source + i);
+        }
+
+        io[0x46] = data;
+        return;
+    }
+
     if (address == 0xFF04) {
         divResetRequested = true;
         return;
