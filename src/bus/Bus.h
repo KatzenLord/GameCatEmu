@@ -39,14 +39,13 @@ private:
     std::array<uint8_t, 0x0080> io{};   // 0xFF00 - 0xFF7F
     std::array<uint8_t, 0x007F> hram{}; // 0xFF80 - 0xFFFE
 
-    uint8_t interuptEnable = 0;         // 0xFFFF
+    uint8_t interruptEnable = 0;         // 0xFFFF
 
     uint8_t ly = 0;
     uint8_t ppuMode = 2;
 
     uint8_t div = 0;
     bool divResetRequested = false;
-
 };
 
 #endif //GAMECATEMU_BUS_H

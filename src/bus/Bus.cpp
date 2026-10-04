@@ -60,7 +60,7 @@ uint8_t Bus::read8(const uint16_t address) const {
         return hram[address - 0xFF80];
     }
     if (address == 0xFFFF) {
-        return interuptEnable;
+        return interruptEnable;
     }
     return 0xFF;
 }
@@ -120,7 +120,7 @@ void Bus::write8(uint16_t address, uint8_t data) {
         return;
     }
     if (address == 0xFFFF) {
-        interuptEnable = data;
+        interruptEnable = data;
         return;
     }
 }

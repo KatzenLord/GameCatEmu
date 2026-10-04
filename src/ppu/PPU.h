@@ -17,10 +17,7 @@ class PPU {
 public:
     explicit PPU(Bus& bus);
     void step(int cycles);
-    uint8_t getBackgroundPixel(int x, int y);
-    uint8_t applyBGPalette(uint8_t colorId) const;
-    uint32_t dmgShadeToARGB(uint8_t shade) const;
-    void renderFrame();
+
     bool frameReady() const;
     void clearFrameReady();
 
@@ -33,10 +30,23 @@ private:
     Bus& bus;
 
     int scanlineCycles = 0;
+    int windowLineCounter = 0;
     void requestVBlankInterrupt();
     std::array<uint32_t, ScreenWidth * ScreenHeight> framebuffer{};
+    std::array<uint8_t, ScreenWidth * ScreenHeight> bgColorIds{};
 
     bool frameReadyFlag = false;
+
+    void updateLYC();
+    void requestSTATInterrupt();
+
+    void renderScanline(int y);
+    void renderSpritesForScanline(int y);
+    uint8_t applyOBJPalette(uint8_t colorId, bool useOBP1) const;
+    uint8_t getBackgroundPixel(int x, int y);
+    uint8_t getWindowPixel(int x, int windowY);
+    uint8_t applyBGPalette(uint8_t colorId) const;
+    uint32_t dmgShadeToARGB(uint8_t shade) const;
 };
 
 
