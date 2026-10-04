@@ -15,3 +15,4 @@ cd <repo-name>
 cmake -S . -B build
 cmake --build build
 ```
+This repository is currently not accepting contributions.
