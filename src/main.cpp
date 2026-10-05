@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <iomanip>
+#include <bits/this_thread_sleep.h>
 
 #include "bus/Bus.h"
 #include "cartridge/Cartridge.h"
@@ -15,7 +16,16 @@
 //static int frameCycles = 0;
 //static int scanlineCycles = 0;
 //static uint8_t ly = 0;
-constexpr double GB_CLOCK = 4194304.0;
+
+using Clock = std::chrono::steady_clock;
+
+constexpr double GB_FPS = 59.7275;
+const auto FRAME_TIME =
+    std::chrono::duration_cast<Clock::duration>(
+        std::chrono::duration<double>(1.0 / GB_FPS)
+    );
+
+auto nextFrame = Clock::now();
 
 int main(int argc, char *argv[]) {
 
@@ -140,6 +150,16 @@ int main(int argc, char *argv[]) {
             SDL_RenderPresent(renderer);
 
             ppu.clearFrameReady();
+
+            nextFrame += FRAME_TIME;
+
+            const auto now = Clock::now();
+
+            if (now < nextFrame) {
+                std::this_thread::sleep_until(nextFrame);
+            } else {
+                nextFrame = now;
+            }
         }
     }
 
