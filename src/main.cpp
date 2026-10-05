@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -14,6 +15,8 @@
 //static int frameCycles = 0;
 //static int scanlineCycles = 0;
 //static uint8_t ly = 0;
+constexpr double GB_CLOCK = 4194304.0;
+
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {
@@ -101,6 +104,7 @@ int main(int argc, char *argv[]) {
     while (isRunning) {
         while (SDL_PollEvent(&e)) {
             inputHandler.handleEvent(e);
+
             if (e.type == SDL_EVENT_QUIT) {
                 isRunning = false;
             }
@@ -111,14 +115,18 @@ int main(int argc, char *argv[]) {
         }
 
         const InputState state = inputMapper.getState();
+
         if (joypad.setInputState(state)) {
             bus.requestInterrupt(Interrupt::Joypad);
         }
 
-        int cycles = cpu.step();
+        while (!ppu.frameReady() && isRunning) {
+            const int cycles = cpu.step();
 
-        timer.tick(cycles);
-        ppu.step(cycles);
+            timer.tick(cycles);
+            ppu.step(cycles);
+        }
+
         if (ppu.frameReady()) {
             SDL_UpdateTexture(
                 texture,
@@ -126,9 +134,11 @@ int main(int argc, char *argv[]) {
                 ppu.getFramebuffer().data(),
                 160 * sizeof(uint32_t)
             );
+
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, texture, nullptr, nullptr);
             SDL_RenderPresent(renderer);
+
             ppu.clearFrameReady();
         }
     }

@@ -7,6 +7,7 @@
 #ifndef GAMECATEMU_CPU_H
 #define GAMECATEMU_CPU_H
 #include "../bus/Bus.h"
+#include <array>
 
 class CPU {
 public:
@@ -26,14 +27,14 @@ public:
         return stopped;
     }
 private:
+    Bus& bus;
+
     enum class Flag : uint8_t {
         Z = 0x80,
         N = 0x40,
         H = 0x20,
         C = 0x10,
     };
-
-    Bus& bus;
 
     uint8_t A = 0;
     uint8_t F = 0;
@@ -83,6 +84,31 @@ private:
 
     void push16(uint16_t value);
     uint16_t pop16();
+
+    using OpcodeHandler = int (CPU::*)(uint8_t);
+
+    std::array<OpcodeHandler, 256> opcodeTable{};
+    std::array<OpcodeHandler, 256> cbOpcodeTable{};
+
+    void initOpcodeTables();
+
+    template<int (CPU::*Fn)()>
+    int invokeNoArg(uint8_t) {
+        return (this->*Fn)();
+    }
+
+    int decodeRst(uint8_t opcode);
+    int decodeCbRlc(uint8_t opcode);
+    int decodeCbRrc(uint8_t opcode);
+    int decodeCbRl(uint8_t opcode);
+    int decodeCbRr(uint8_t opcode);
+    int decodeCbSla(uint8_t opcode);
+    int decodeCbSra(uint8_t opcode);
+    int decodeCbSwap(uint8_t opcode);
+    int decodeCbSrl(uint8_t opcode);
+    int decodeCbBit(uint8_t opcode);
+    int decodeCbRes(uint8_t opcode);
+    int decodeCbSet(uint8_t opcode);
 
     int decodeLdRegReg(uint8_t opcode);
     int decodeLdReg16(uint8_t opcode);

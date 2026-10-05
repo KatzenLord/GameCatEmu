@@ -10,7 +10,8 @@
 #include <oneapi/tbb/task_arena.h>
 
 CPU::CPU(Bus &bus)
-    : bus(bus){
+    : bus(bus) {
+    initOpcodeTables();
     reset();
 }
 
@@ -88,104 +89,134 @@ int CPU::step() {
 }
 
 int CPU::executeOpcodes(uint8_t opcode, uint16_t oldPC) {
-    if ((opcode & 0xC7) == 0xC7) {
-        return rst(opcode & 0x38);
+    const OpcodeHandler handler = opcodeTable[opcode];
+    if (handler == nullptr) {
+        return unimplemented(opcode, oldPC);
     }
-    if ((opcode & 0xCF) == 0x09) {
-        return decodeAddHLReg16(opcode);
+
+    return (this->*handler)(opcode);
+}
+
+void CPU::initOpcodeTables() {
+    opcodeTable.fill(nullptr);
+    cbOpcodeTable.fill(nullptr);
+
+    for (uint16_t value = 0; value < 0x100; ++value) {
+        const auto opcode = static_cast<uint8_t>(value);
+
+        if ((opcode & 0xC7) == 0xC7) {
+            opcodeTable[opcode] = &CPU::decodeRst;
+        } else if ((opcode & 0xCF) == 0x09) {
+            opcodeTable[opcode] = &CPU::decodeAddHLReg16;
+        } else if ((opcode & 0xC0) == 0x40 && opcode != 0x76) {
+            opcodeTable[opcode] = &CPU::decodeLdRegReg;
+        } else if ((opcode & 0xCF) == 0x01) {
+            opcodeTable[opcode] = &CPU::decodeLdReg16;
+        } else if ((opcode & 0xCF) == 0x03) {
+            opcodeTable[opcode] = &CPU::decodeIncReg16;
+        } else if ((opcode & 0xC7) == 0x04) {
+            opcodeTable[opcode] = &CPU::decodeIncReg8;
+        } else if ((opcode & 0xC7) == 0x05) {
+            opcodeTable[opcode] = &CPU::decodeDecReg8;
+        } else if ((opcode & 0xC7) == 0x06) {
+            opcodeTable[opcode] = &CPU::decodeRegImmediate;
+        } else if ((opcode & 0xE7) == 0x20) {
+            opcodeTable[opcode] = &CPU::decodeJrCondition;
+        } else if ((opcode & 0xE7) == 0xC0) {
+            opcodeTable[opcode] = &CPU::decodeRetCondition;
+        } else if ((opcode & 0xE7) == 0xC2) {
+            opcodeTable[opcode] = &CPU::decodeJpCondition;
+        } else if ((opcode & 0xE7) == 0xC4) {
+            opcodeTable[opcode] = &CPU::decodeCallCondition;
+        } else if ((opcode & 0xCF) == 0x0B) {
+            opcodeTable[opcode] = &CPU::decodeDecReg16;
+        } else if ((opcode & 0xC0) == 0x80) {
+            opcodeTable[opcode] = &CPU::decodeAluRegister;
+        } else if ((opcode & 0xCF) == 0xC5) {
+            opcodeTable[opcode] = &CPU::decodePushReg16;
+        } else if ((opcode & 0xCF) == 0xC1) {
+            opcodeTable[opcode] = &CPU::decodePopReg16;
+        }
     }
-    if ((opcode & 0xC0) == 0x40 && opcode != 0x76)
-        return decodeLdRegReg(opcode);
 
-    if ((opcode & 0xCF) == 0x01)
-        return decodeLdReg16(opcode);
+    opcodeTable[0x00] = &CPU::invokeNoArg<&CPU::nop>;
+    opcodeTable[0x02] = &CPU::invokeNoArg<&CPU::ld_bc_a>;
+    opcodeTable[0x07] = &CPU::invokeNoArg<&CPU::rlca>;
+    opcodeTable[0x08] = &CPU::invokeNoArg<&CPU::ld_a16_sp>;
+    opcodeTable[0x0A] = &CPU::invokeNoArg<&CPU::ld_a_bc>;
+    opcodeTable[0x0F] = &CPU::invokeNoArg<&CPU::rrca>;
+    opcodeTable[0x10] = &CPU::invokeNoArg<&CPU::stop>;
+    opcodeTable[0x12] = &CPU::invokeNoArg<&CPU::ld_de_a>;
+    opcodeTable[0x17] = &CPU::invokeNoArg<&CPU::rla>;
+    opcodeTable[0x18] = &CPU::invokeNoArg<&CPU::jr_i8>;
+    opcodeTable[0x1A] = &CPU::invokeNoArg<&CPU::ld_a_de>;
+    opcodeTable[0x1F] = &CPU::invokeNoArg<&CPU::rra>;
+    opcodeTable[0x22] = &CPU::invokeNoArg<&CPU::ld_hli_a>;
+    opcodeTable[0x27] = &CPU::invokeNoArg<&CPU::daa>;
+    opcodeTable[0x2A] = &CPU::invokeNoArg<&CPU::ld_a_hli>;
+    opcodeTable[0x2F] = &CPU::invokeNoArg<&CPU::cpl>;
+    opcodeTable[0x32] = &CPU::invokeNoArg<&CPU::ld_hld_a>;
+    opcodeTable[0x37] = &CPU::invokeNoArg<&CPU::scf>;
+    opcodeTable[0x3A] = &CPU::invokeNoArg<&CPU::ld_a_hld>;
+    opcodeTable[0x3F] = &CPU::invokeNoArg<&CPU::ccf>;
+    opcodeTable[0x76] = &CPU::invokeNoArg<&CPU::halt>;
+    opcodeTable[0xC3] = &CPU::invokeNoArg<&CPU::jp_u16>;
+    opcodeTable[0xC6] = &CPU::invokeNoArg<&CPU::add_a_n8>;
+    opcodeTable[0xC9] = &CPU::invokeNoArg<&CPU::ret>;
+    opcodeTable[0xCB] = &CPU::invokeNoArg<&CPU::stepCB>;
+    opcodeTable[0xCD] = &CPU::invokeNoArg<&CPU::call_u16>;
+    opcodeTable[0xCE] = &CPU::invokeNoArg<&CPU::adc_a_n8>;
+    opcodeTable[0xD6] = &CPU::invokeNoArg<&CPU::sub_a_n8>;
+    opcodeTable[0xD9] = &CPU::invokeNoArg<&CPU::reti>;
+    opcodeTable[0xDE] = &CPU::invokeNoArg<&CPU::sbc_a_n8>;
+    opcodeTable[0xE0] = &CPU::invokeNoArg<&CPU::ldh_a8_a>;
+    opcodeTable[0xE2] = &CPU::invokeNoArg<&CPU::ldh_c_a>;
+    opcodeTable[0xE6] = &CPU::invokeNoArg<&CPU::and_a_n8>;
+    opcodeTable[0xE8] = &CPU::invokeNoArg<&CPU::add_sp_e8>;
+    opcodeTable[0xE9] = &CPU::invokeNoArg<&CPU::jp_hl>;
+    opcodeTable[0xEA] = &CPU::invokeNoArg<&CPU::ld_a16_a>;
+    opcodeTable[0xEE] = &CPU::invokeNoArg<&CPU::xor_a_n8>;
+    opcodeTable[0xF0] = &CPU::invokeNoArg<&CPU::ldh_a_a8>;
+    opcodeTable[0xF2] = &CPU::invokeNoArg<&CPU::ldh_a_c>;
+    opcodeTable[0xF3] = &CPU::invokeNoArg<&CPU::di>;
+    opcodeTable[0xF6] = &CPU::invokeNoArg<&CPU::or_a_n8>;
+    opcodeTable[0xF8] = &CPU::invokeNoArg<&CPU::ld_hl_spe8>;
+    opcodeTable[0xF9] = &CPU::invokeNoArg<&CPU::ld_sp_hl>;
+    opcodeTable[0xFA] = &CPU::invokeNoArg<&CPU::ld_a_a16>;
+    opcodeTable[0xFB] = &CPU::invokeNoArg<&CPU::ei>;
+    opcodeTable[0xFE] = &CPU::invokeNoArg<&CPU::cp_u8>;
+    
+    for (uint16_t value = 0; value < 0x100; ++value) {
+        const auto opcode = static_cast<uint8_t>(value);
 
-    if ((opcode & 0xCF) == 0x03)
-        return decodeIncReg16(opcode);
-
-    if ((opcode & 0xC7) == 0x04)
-        return decodeIncReg8(opcode);
-
-    if ((opcode & 0xC7) == 0x05)
-        return decodeDecReg8(opcode);
-
-    if ((opcode & 0xC7) == 0x06)
-        return decodeRegImmediate(opcode);
-
-    if ((opcode & 0xE7) == 0x20)
-        return decodeJrCondition(opcode);
-
-    if ((opcode & 0xE7) == 0xC0)
-        return decodeRetCondition(opcode);
-
-    if ((opcode & 0xE7) == 0xC2)
-        return decodeJpCondition(opcode);
-
-    if ((opcode & 0xE7) == 0xC4)
-        return decodeCallCondition(opcode);
-
-    if ((opcode & 0xCF) == 0x0B)
-        return decodeDecReg16(opcode);
-
-    if ((opcode & 0xC0) == 0x80)
-        return decodeAluRegister(opcode);
-
-    if ((opcode & 0xCF) == 0xC5)
-        return decodePushReg16(opcode);
-
-    if ((opcode & 0xCF) == 0xC1)
-        return decodePopReg16(opcode);
-
-    switch (opcode) {
-        case 0x00: return nop();
-        case 0x02: return ld_bc_a();
-        case 0x07: return rlca();
-        case 0x08: return ld_a16_sp();
-        case 0x0A: return ld_a_bc();
-        case 0x0F: return rrca();
-        case 0x10: return stop();
-        case 0x12: return ld_de_a();
-        case 0x17: return rla();
-        case 0x18: return jr_i8();
-        case 0x1A: return ld_a_de();
-        case 0x1F: return rra();
-        case 0x22: return ld_hli_a();
-        case 0x27: return daa();
-        case 0x2A: return ld_a_hli();
-        case 0x3A: return ld_a_hld();
-        case 0x2F: return cpl();
-        case 0x32: return ld_hld_a();
-        case 0x37: return scf();
-        case 0x3F: return ccf();
-        case 0x76: return halt();
-        case 0xC3: return jp_u16();
-        case 0xC6: return add_a_n8();
-        case 0xC9: return ret();
-        case 0xCB: return stepCB();
-        case 0xCD: return call_u16();
-        case 0xCE: return adc_a_n8();
-        case 0xD6: return sub_a_n8();
-        case 0xD9: return reti();
-        case 0xDE: return sbc_a_n8();
-        case 0xE0: return ldh_a8_a();
-        case 0xE2: return ldh_c_a();
-        case 0xE6: return and_a_n8();
-        case 0xE8: return add_sp_e8();
-        case 0xE9: return jp_hl();
-        case 0xEA: return ld_a16_a();
-        case 0xEE: return xor_a_n8();
-        case 0xF0: return ldh_a_a8();
-        case 0xF2: return ldh_a_c();
-        case 0xF3: return di();
-        case 0xF6: return or_a_n8();
-        case 0xF8: return ld_hl_spe8();
-        case 0xF9: return ld_sp_hl();
-        case 0xFA: return ld_a_a16();
-        case 0xFB: return ei();
-        case 0xFE: return cp_u8();
-        default:
-            return unimplemented(opcode, oldPC);
+        if ((opcode & 0xF8) == 0x00) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbRlc;
+        } else if ((opcode & 0xF8) == 0x08) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbRrc;
+        } else if ((opcode & 0xF8) == 0x10) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbRl;
+        } else if ((opcode & 0xF8) == 0x18) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbRr;
+        } else if ((opcode & 0xF8) == 0x20) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbSla;
+        } else if ((opcode & 0xF8) == 0x28) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbSra;
+        } else if ((opcode & 0xF8) == 0x30) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbSwap;
+        } else if ((opcode & 0xF8) == 0x38) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbSrl;
+        } else if ((opcode & 0xC0) == 0x40) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbBit;
+        } else if ((opcode & 0xC0) == 0x80) {
+            cbOpcodeTable[opcode] = &CPU::decodeCbRes;
+        } else {
+            cbOpcodeTable[opcode] = &CPU::decodeCbSet;
+        }
     }
+}
+
+int CPU::decodeRst(uint8_t opcode) {
+    return rst(opcode & 0x38);
 }
 
 uint8_t CPU::fetch8() {
@@ -726,72 +757,69 @@ void CPU::cp_a(uint8_t value) {
 }
 
 int CPU::stepCB() {
-    uint8_t opcode = fetch8();
+    const uint8_t opcode = fetch8();
+    const OpcodeHandler handler = cbOpcodeTable[opcode];
 
-    if ((opcode & 0xF8) == 0x00) {
-        const uint8_t reg = opcode & 0x07;
-        return rlc_reg(reg);
+    if (handler == nullptr) {
+        std::cerr << "Unimplemented CB Opcode 0x"
+                  << std::hex << std::uppercase
+                  << static_cast<int>(opcode)
+                  << " \nTODO" << std::endl;
+        halted = true;
+        return 4;
     }
 
-    if ((opcode & 0xF8) == 0x08) {
-        const uint8_t reg = opcode & 0x07;
-        return rrc_reg(reg);
-    }
+    return (this->*handler)(opcode);
+}
 
-    if ((opcode & 0xF8) == 0x10) {
-        const uint8_t reg = opcode & 0x07;
-        return rl_reg(reg);
-    }
+int CPU::decodeCbRlc(uint8_t opcode) {
+    return rlc_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xF8) == 0x18) {
-        const uint8_t reg = opcode & 0x07;
-        return rr_reg(reg);
-    }
+int CPU::decodeCbRrc(uint8_t opcode) {
+    return rrc_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xF8) == 0x20) {
-        const uint8_t reg = opcode & 0x07;
-        return sla_reg(reg);
-    }
+int CPU::decodeCbRl(uint8_t opcode) {
+    return rl_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xF8) == 0x28) {
-        const uint8_t reg = opcode & 0x07;
-        return sra_reg(reg);
-    }
+int CPU::decodeCbRr(uint8_t opcode) {
+    return rr_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xF8) == 0x30) {
-        const uint8_t reg = opcode & 0x07;
-        return swap_reg(reg);
-    }
+int CPU::decodeCbSla(uint8_t opcode) {
+    return sla_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xF8) == 0x38) {
-        const uint8_t reg = opcode & 0x07;
-        return srl_reg(reg);
-    }
+int CPU::decodeCbSra(uint8_t opcode) {
+    return sra_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xC0) == 0x40) {
-        const uint8_t bit = (opcode >> 3) & 0x07;
-        const uint8_t reg = opcode & 0x07;
-        return bit_reg(bit, reg);
-    }
+int CPU::decodeCbSwap(uint8_t opcode) {
+    return swap_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xC0) == 0x80) {
-        const uint8_t bit = (opcode >> 3) & 0x07;
-        const uint8_t reg = opcode & 0x07;
-        return res_reg(bit, reg);
-    }
+int CPU::decodeCbSrl(uint8_t opcode) {
+    return srl_reg(opcode & 0x07);
+}
 
-    if ((opcode & 0xC0) == 0xC0) {
-        const uint8_t bit = (opcode >> 3) & 0x07;
-        const uint8_t reg = opcode & 0x07;
-        return set_reg(bit, reg);
-    }
+int CPU::decodeCbBit(uint8_t opcode) {
+    const uint8_t bit = (opcode >> 3) & 0x07;
+    const uint8_t reg = opcode & 0x07;
+    return bit_reg(bit, reg);
+}
 
-    std::cerr << "Unimplemented CB Opcode 0x"
-        << std::hex << std::uppercase
-        << static_cast<int>(opcode)
-        << " \nTODO" << std::endl;
-    halted = true;
-    return 4;
+int CPU::decodeCbRes(uint8_t opcode) {
+    const uint8_t bit = (opcode >> 3) & 0x07;
+    const uint8_t reg = opcode & 0x07;
+    return res_reg(bit, reg);
+}
+
+int CPU::decodeCbSet(uint8_t opcode) {
+    const uint8_t bit = (opcode >> 3) & 0x07;
+    const uint8_t reg = opcode & 0x07;
+    return set_reg(bit, reg);
 }
 
 int CPU::swap_reg(uint8_t reg) {
