@@ -10,8 +10,8 @@ Requirements:
 - SDL3
 
 ```bash
-git clone <repo-url>
-cd <repo-name>
+git clone https://github.com/KatzenLord/GameCatEmu.git
+cd GameCatEmu
 cmake -S . -B build
 cmake --build build
 ```
