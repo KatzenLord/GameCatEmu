@@ -51,13 +51,19 @@ int main(int argc, char *argv[]) {
 
     InputHandler inputHandler{};
     Joypad joypad;
-    Bus bus(cartridge, joypad);
+    APU apu;
+    Bus bus(cartridge, joypad, apu);
     CPU cpu(bus);
     Timer timer(bus);
     PPU ppu(bus);
     InputMapper inputMapper(inputHandler);
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    apu.writeReg(0xFF17, 0xF0);
+    apu.writeReg(0xFF16, 0x80);
+    apu.writeReg(0xFF18, 0xD6);
+    apu.writeReg(0xFF19, 0x86);
+
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         std::cout << "SDL could not be Initialized: " << SDL_GetError() << std::endl;
         return 1;
     }
@@ -98,6 +104,29 @@ int main(int argc, char *argv[]) {
         SDL_LOGICAL_PRESENTATION_LETTERBOX
     );
 
+    SDL_AudioSpec spec{};
+    spec.format = SDL_AUDIO_F32;
+    spec.channels = 1;
+    spec.freq = 48000;
+
+    SDL_AudioStream* audioStream =
+        SDL_OpenAudioDeviceStream(
+            SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+            &spec,
+            nullptr,
+            nullptr
+        );
+
+    if (!audioStream) {
+        std::cerr << "Audio Stream could not be created: " << SDL_GetError() << std::endl;
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_ResumeAudioStreamDevice(audioStream);
+
     bool isRunning = true;
 
     SDL_Texture* texture = SDL_CreateTexture(
@@ -135,6 +164,28 @@ int main(int argc, char *argv[]) {
 
             timer.tick(cycles);
             ppu.step(cycles);
+            apu.tick(cycles);
+
+            const auto& buffer = apu.getAudioBuffer();
+
+            if (buffer.size() >= 512) {
+                const auto [minIt, maxIt] =
+                    std::minmax_element(buffer.begin(), buffer.end());
+
+                std::cout
+                    << "samples: " << buffer.size()
+                    << " min: " << *minIt
+                    << " max: " << *maxIt
+                    << '\n';
+
+                SDL_PutAudioStreamData(
+                    audioStream,
+                    buffer.data(),
+                    buffer.size() * sizeof(float)
+                );
+
+                apu.clearAudioBuffer();
+            }
         }
 
         if (ppu.frameReady()) {
@@ -163,6 +214,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    SDL_DestroyAudioStream(audioStream);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

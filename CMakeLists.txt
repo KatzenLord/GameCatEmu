@@ -25,6 +25,8 @@ add_executable(GameCatEmu
         src/joypad/Joypad.cpp
         src/joypad/Joypad.h
         src/bus/Interrupt.h
+        src/apu/APU.cpp
+        src/apu/APU.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)

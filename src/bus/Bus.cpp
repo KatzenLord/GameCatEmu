@@ -7,8 +7,8 @@
 #include <iostream>
 
 
-Bus::Bus(Cartridge &cartridge, Joypad &joypad)
-    : cartridge(cartridge), joypad(joypad){
+Bus::Bus(Cartridge &cartridge, Joypad &joypad, APU &apu)
+    : cartridge(cartridge), joypad(joypad), apu(apu){
 }
 
 uint8_t Bus::read8(const uint16_t address) const {
