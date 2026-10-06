@@ -51,17 +51,12 @@ int main(int argc, char *argv[]) {
 
     InputHandler inputHandler{};
     Joypad joypad;
-    APU apu;
+    APU apu{};
     Bus bus(cartridge, joypad, apu);
     CPU cpu(bus);
     Timer timer(bus);
     PPU ppu(bus);
     InputMapper inputMapper(inputHandler);
-
-    apu.writeReg(0xFF17, 0xF0);
-    apu.writeReg(0xFF16, 0x80);
-    apu.writeReg(0xFF18, 0xD6);
-    apu.writeReg(0xFF19, 0x86);
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         std::cout << "SDL could not be Initialized: " << SDL_GetError() << std::endl;
@@ -169,14 +164,6 @@ int main(int argc, char *argv[]) {
             const auto& buffer = apu.getAudioBuffer();
 
             if (buffer.size() >= 512) {
-                const auto [minIt, maxIt] =
-                    std::minmax_element(buffer.begin(), buffer.end());
-
-                std::cout
-                    << "samples: " << buffer.size()
-                    << " min: " << *minIt
-                    << " max: " << *maxIt
-                    << '\n';
 
                 SDL_PutAudioStreamData(
                     audioStream,

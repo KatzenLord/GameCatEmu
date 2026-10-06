@@ -22,6 +22,8 @@ static constexpr uint8_t DUTY_TABLE[4][8] = {
 
 class APU {
 public:
+    APU();
+
     void tick(int cycles);
 
     void clearAudioBuffer();
@@ -30,6 +32,8 @@ public:
     uint8_t readReg(uint16_t address) const;
     void writeReg(uint16_t address, uint8_t value);
 private:
+    void reset();
+
     double sampleCounter = 0.0;
 
     std::vector<float> audioBuffer;

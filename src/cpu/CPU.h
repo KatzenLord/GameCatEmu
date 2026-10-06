@@ -56,7 +56,7 @@ private:
     bool joypadWakeUp = false;
 
     bool interruptMasterEnable;
-    ushort imeEnableDelay;
+    uint8_t imeEnableDelay;
 
     uint8_t fetch8();
     uint16_t fetch16();

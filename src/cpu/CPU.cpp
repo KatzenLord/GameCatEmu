@@ -7,26 +7,12 @@
 #include <charconv>
 #include <iomanip>
 #include <iostream>
-#include <oneapi/tbb/task_arena.h>
 
 CPU::CPU(Bus &bus)
     : bus(bus) {
     initOpcodeTables();
     reset();
 }
-
-struct TraceEntry {
-    uint16_t pc;
-    uint8_t opcode;
-    uint16_t af;
-    uint16_t bc;
-    uint16_t de;
-    uint16_t hl;
-    uint16_t sp;
-};
-
-static std::array<TraceEntry, 32> traceHistory{};
-static size_t traceIndex = 0;
 
 void CPU::reset() {
     A = 0x01;

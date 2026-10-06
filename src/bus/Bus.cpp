@@ -69,6 +69,11 @@ void Bus::write8(uint16_t address, uint8_t data) {
         return;
     }
 
+    if (address >= 0xFF10 && address <= 0xFF3F) {
+        apu.writeReg(address, data);
+        return;
+    }
+
     if (address == 0xFF46) {
         const uint16_t source =
             static_cast<uint16_t>(data) << 8;
