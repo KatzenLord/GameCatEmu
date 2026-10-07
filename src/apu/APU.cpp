@@ -48,6 +48,9 @@ void APU::writeReg(uint16_t address, uint8_t value) {
     if (address == 0xFF25) {
         nr51 = value;
 
+        ch1Left = (nr51 & 0x10) != 0;
+        ch1Right = (nr51 & 0x01) != 0;
+
         ch2Left = (nr51 & 0x20) != 0;
         ch2Right = (nr51 & 0x02) != 0;
 
@@ -269,16 +272,16 @@ void APU::generateSample() {
     float left = 0.0f;
     float right = 0.0f;
 
-    if (nr51 & 0x10) {
+    if (ch1Left) {
         left += ch1;
     }
-    if (nr51 & 0x01) {
+    if (ch1Right) {
         right += ch1;
     }
-    if (nr51 & 0x20) {
+    if (ch2Left) {
         left += ch2;
     }
-    if (nr51 & 0x02) {
+    if (ch2Right) {
         right += ch2;
     }
 
