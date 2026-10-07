@@ -43,7 +43,7 @@ private:
     void tickChannel3(int cycles);
     void tickChannel4(int cycles);
 
-    uint8_t getChannel2Output() const;
+    float getChannel1Sample() const;
     float getChannel2Sample() const;
 
     void generateSample();
@@ -67,6 +67,40 @@ private:
     uint8_t nr12 = 0;
     uint8_t nr13 = 0;
     uint8_t nr14 = 0;
+
+    // Channel 1 states
+    bool ch1Enabled = false;
+    bool ch1DacEnabled = false;
+
+    uint8_t ch1SweepPace = 0;
+    bool ch1SweepDecrease = false;
+    uint8_t ch1SweepShift = 0;
+
+    uint8_t ch1SweepTimer = 0;
+    uint16_t ch1SweepShadowPeriod = 0;
+    bool ch1SweepEnabled = false;
+
+    uint16_t ch1Period = 0;
+    int ch1Timer = 0;
+
+    uint8_t ch1Duty = 0;
+    uint8_t ch1DutyPosition = 0;
+    uint8_t ch1Volume = 0;
+    uint8_t ch1InitialVolume = 0;
+
+    uint8_t ch1LengthCounter = 0;
+    bool ch1LengthEnabled = false;
+
+    bool ch1EnvelopeIncrease = false;
+    uint8_t ch1EnvelopePace = 0;
+    uint8_t ch1EnvelopeTimer = 0;
+
+    bool ch1Left = false;
+    bool ch1Right = false;
+
+    void clockChannel1Length();
+    void clockChannel1Envelope();
+    void clockChannel1Sweep();
 
     // Channel 2
     uint8_t nr21 = 0;
@@ -95,7 +129,6 @@ private:
 
     bool ch2Left = false;
     bool ch2Right = false;
-
 
     void clockChannel2Length();
     void clockChannel2Envelope();
