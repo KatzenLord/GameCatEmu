@@ -20,6 +20,10 @@ uint8_t Bus::read8(const uint16_t address) const {
         return div;
     }
 
+    if (address >= 0xFF10 && address <= 0xFF3F) {
+        return apu.readReg(address);
+    }
+
     if (address == 0xFF44) {
         return ly;
     }

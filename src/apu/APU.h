@@ -48,11 +48,18 @@ private:
 
     void generateSample();
 
+    int frameSequencerTimer = 8192;
+    uint8_t frameSequencerStep = 0;
+
+    void clockFrameSequencer();
 
     // Global Registers
     uint8_t nr50 = 0;
     uint8_t nr51 = 0;
     uint8_t nr52 = 0;
+
+    uint8_t leftVolume = 0;
+    uint8_t rightVolume = 0;
 
     // Channel 1
     uint8_t nr10 = 0;
@@ -78,6 +85,20 @@ private:
     uint8_t ch2DutyPosition = 0;
     uint8_t ch2Volume = 0;
     uint8_t ch2InitialVolume = 0;
+
+    uint8_t ch2LengthCounter = 0;
+    bool ch2LengthEnabled = false;
+
+    bool ch2EnvelopeIncrease = false;
+    uint8_t ch2EnvelopePace = 0;
+    uint8_t ch2EnvelopeTimer = 0;
+
+    bool ch2Left = false;
+    bool ch2Right = false;
+
+
+    void clockChannel2Length();
+    void clockChannel2Envelope();
 
     // Channel 3
     uint8_t nr30 = 0;

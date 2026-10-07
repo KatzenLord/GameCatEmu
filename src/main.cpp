@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     SDL_AudioSpec spec{};
     spec.format = SDL_AUDIO_F32;
-    spec.channels = 1;
+    spec.channels = 2;
     spec.freq = 48000;
 
     SDL_AudioStream* audioStream =
