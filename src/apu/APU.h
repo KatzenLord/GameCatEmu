@@ -45,6 +45,7 @@ private:
 
     float getChannel1Sample() const;
     float getChannel2Sample() const;
+    float getChannel3Sample() const;
 
     void generateSample();
 
@@ -140,6 +141,26 @@ private:
     uint8_t nr33 = 0;
     uint8_t nr34 = 0;
     std::array<uint8_t, 16> waveRam{};
+
+    bool ch3Enabled = false;
+    bool ch3DacEnabled = false;
+
+    uint16_t ch3LengthCounter = 0;
+    bool ch3LengthEnabled = false;
+
+    uint8_t ch3Volume = 0;
+    int ch3Timer;
+
+    uint8_t ch3OutputLevel = 0;
+    uint16_t ch3Period = 0;
+
+    int ch3WaveIndex = 0;
+
+    bool ch3Left = false;
+    bool ch3Right = false;
+
+    uint8_t getChannel3WaveSample() const;
+    void clockChannel3Length();
 
     // Channel 4
     uint8_t nr41 = 0;
