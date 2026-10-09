@@ -258,6 +258,7 @@ uint8_t APU::readReg(uint16_t address) const {
 void APU::tick(int cycles) {
     tickChannel1(cycles);
     tickChannel2(cycles);
+    tickChannel3(cycles);
 
     frameSequencerTimer -= cycles;
 
