@@ -57,6 +57,9 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         ch3Left = (nr51 & 0x40) != 0;
         ch3Right = (nr51 & 0x04) != 0;
 
+        ch4Left = (nr51 & 0x80) != 0;
+        ch4Right = (nr51 & 0x08) != 0;
+
         return;
     }
     if (address == 0xFF26) {
@@ -74,6 +77,9 @@ void APU::writeReg(uint16_t address, uint8_t value) {
 
             ch3Enabled = false;
             ch3DacEnabled = false;
+
+            ch4Enabled = false;
+            ch4DacEnabled = false;
         }
         else {
             nr52 = 0x80;
@@ -220,6 +226,48 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         waveRam[address - 0xFF30] = value;
         return;
     }
+
+    // Channel 4
+    if (address == 0xFF20) {
+        nr41 = value;
+        ch4LengthCounter = 64 - (nr41 & 0x3F);
+        return;
+    }
+    if (address == 0xFF21) {
+        nr42 = value;
+        ch4InitialVolume = (nr42 >> 4) & 0x0F;
+
+        ch4EnvelopeIncrease = (nr42 & 0x08) != 0;
+        ch4EnvelopePace = nr42 & 0x07;
+
+        ch4DacEnabled = (nr42 & 0xF8) != 0;
+        if (!ch4DacEnabled) {
+            ch4Enabled = false;
+        }
+        return;
+    }
+    if (address == 0xFF22) {
+        nr43 = value;
+        ch4ClockShift = (nr43 >> 4) & 0x0F;
+        ch4LSFRWidth = (nr43 & 0x08) != 0;
+        ch4DividerCode = nr43 & 0x07;
+
+        return;
+    }
+    if (address == 0xFF23) {
+        nr44 = value;
+        ch4LengthEnabled = (nr44 & 0x40) != 0;
+        if ((nr44 & 0x80) != 0) {
+            ch4Enabled = ch4DacEnabled;
+            if (ch4LengthCounter == 0) {
+                ch4LengthCounter = 64;
+            }
+            ch4Volume = ch4InitialVolume;
+            ch4EnvelopeTimer = (ch4EnvelopePace == 0) ? 8 : ch4EnvelopePace;
+            ch4LSFR = 0x7FFF;
+            ch4Timer = NOISE_DIVISORS[ch4DividerCode] << ch4ClockShift;
+        }
+    }
     return;
 }
 
@@ -237,17 +285,12 @@ uint8_t APU::readReg(uint16_t address) const {
         case 0xFF26: {
             uint8_t result = 0x70;
 
-            if (nr52 & 0x80)
-                result |= 0x80;
+            if (nr52 & 0x80) result |= 0x80;
+            if (ch1Enabled) result |= 0x01;
+            if (ch2Enabled) result |= 0x02;
+            if (ch3Enabled) result |= 0x04;
+            if (ch4Enabled) result |= 0x08;
 
-            if (ch1Enabled)
-                result |= 0x01;
-
-            if (ch2Enabled)
-                result |= 0x02;
-
-            if (ch3Enabled)
-                result |= 0x04;
             return result;
         }
         default:
@@ -259,6 +302,7 @@ void APU::tick(int cycles) {
     tickChannel1(cycles);
     tickChannel2(cycles);
     tickChannel3(cycles);
+    tickChannel4(cycles);
 
     frameSequencerTimer -= cycles;
 
@@ -310,6 +354,25 @@ void APU::tickChannel3(int cycles) {
     while (ch3Timer <= 0) {
         ch3Timer += (2048 - ch3Period) * 2;
         ch3WaveIndex = (ch3WaveIndex + 1) & 0x1F;
+    }
+}
+
+void APU::tickChannel4(int cycles) {
+    if (!ch4Enabled || !ch4DacEnabled)
+        return;
+
+    ch4Timer -= cycles;
+
+    while (ch4Timer <= 0) {
+        ch4Timer += NOISE_DIVISORS[ch4DividerCode] << ch4ClockShift;
+        const uint8_t xorBit = (ch4LSFR & 0x01) ^ ((ch4LSFR >> 1) & 0x01);
+        ch4LSFR >>= 1;
+        ch4LSFR |= static_cast<uint16_t>(xorBit) << 14;
+
+        if (ch4LSFRWidth) {
+            ch4LSFR &= ~(1 << 6);
+            ch4LSFR |= xorBit << 6;
+        }
     }
 }
 
@@ -372,32 +435,37 @@ float APU::getChannel3Sample() const {
     return normalized * 0.05f;
 }
 
+float APU::getChannel4Sample() const {
+    if (!ch4Enabled || !ch4DacEnabled)
+        return 0.0f;
+
+    bool high = !(ch4LSFR & 0x01);
+
+    return high
+        ? static_cast<float>(ch4Volume) / 15.0f * 0.05f
+        : -static_cast<float>(ch4Volume) / 15.0f * 0.05f;
+}
+
 void APU::generateSample() {
     float ch1 = getChannel1Sample();
     float ch2 = getChannel2Sample();
     float ch3 = getChannel3Sample();
+    float ch4 = getChannel4Sample();
 
     float left = 0.0f;
     float right = 0.0f;
 
-    if (ch1Left) {
-        left += ch1;
-    }
-    if (ch1Right) {
-        right += ch1;
-    }
-    if (ch2Left) {
-        left += ch2;
-    }
-    if (ch2Right) {
-        right += ch2;
-    }
-    if (ch3Left) {
-        left += ch3;
-    }
-    if (ch3Right) {
-        right += ch3;
-    }
+    if (ch1Left) left += ch1;
+    if (ch1Right) right += ch1;
+
+    if (ch2Left) left += ch2;
+    if (ch2Right) right += ch2;
+
+    if (ch3Left) left += ch3;
+    if (ch3Right) right += ch3;
+
+    if (ch4Left) left += ch4;
+    if (ch4Right) right += ch4;
 
     const float leftVolume = static_cast<float>(((nr50 >> 4) & 0x07) + 1) / 8.0f;
     const float rightVolume = static_cast<float>((nr50 & 0x07) + 1) / 8.0f;
@@ -415,25 +483,32 @@ void APU::clockFrameSequencer() {
             clockChannel1Length();
             clockChannel2Length();
             clockChannel3Length();
+            clockChannel4Length();
+            break;
         case 2:
             clockChannel1Length();
             clockChannel2Length();
             clockChannel1Sweep();
             clockChannel3Length();
+            clockChannel4Length();
+            break;
         case 4:
             clockChannel1Length();
             clockChannel2Length();
             clockChannel3Length();
+            clockChannel4Length();
             break;
         case 6:
             clockChannel1Length();
             clockChannel2Length();
             clockChannel1Sweep();
             clockChannel3Length();
+            clockChannel4Length();
             break;
         case 7:
             clockChannel1Envelope();
             clockChannel2Envelope();
+            clockChannel4Envelope();
             break;
     }
     frameSequencerStep = (frameSequencerStep + 1) & 0x07;
@@ -554,6 +629,38 @@ void APU::clockChannel3Length() {
 
         if (ch3LengthCounter == 0) {
             ch3Enabled = false;
+        }
+    }
+}
+
+void APU::clockChannel4Length() {
+    if (!ch4LengthEnabled)
+        return;
+
+    if (ch4LengthCounter > 0) {
+        ch4LengthCounter--;
+        if (ch4LengthCounter == 0) {
+            ch4Enabled = false;
+        }
+    }
+}
+
+void APU::clockChannel4Envelope() {
+    if (ch4EnvelopePace == 0)
+        return;
+    if (ch4EnvelopeTimer > 0) {
+        ch4EnvelopeTimer--;
+    }
+    if (ch4EnvelopeTimer == 0) {
+        ch4EnvelopeTimer = ch4EnvelopePace;
+        if (ch4EnvelopeIncrease) {
+            if (ch4Volume < 15) {
+                ch4Volume++;
+            } else {
+                if (ch4Volume > 0) {
+                    ch4Volume--;
+                }
+            }
         }
     }
 }

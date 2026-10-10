@@ -20,6 +20,10 @@ static constexpr uint8_t DUTY_TABLE[4][8] = {
     {0,1,1,1,1,1,1,0}
 };
 
+static constexpr int NOISE_DIVISORS[8] = {
+    8, 16, 32, 48, 64, 80, 96, 112
+};
+
 class APU {
 public:
     APU();
@@ -46,6 +50,7 @@ private:
     float getChannel1Sample() const;
     float getChannel2Sample() const;
     float getChannel3Sample() const;
+    float getChannel4Sample() const;
 
     void generateSample();
 
@@ -167,6 +172,32 @@ private:
     uint8_t nr42 = 0;
     uint8_t nr43 = 0;
     uint8_t nr44 = 0;
+
+    bool ch4Enabled = false;
+    bool ch4DacEnabled = false;
+
+    uint16_t ch4LengthCounter = 0;
+    bool ch4LengthEnabled = false;
+
+    uint8_t ch4Volume = 0;
+    uint8_t ch4InitialVolume = 0;
+    int ch4Timer = 0;
+
+    bool ch4EnvelopeIncrease = false;
+    uint8_t ch4EnvelopePace = 0;
+    uint8_t ch4EnvelopeTimer = 0;
+
+    uint8_t ch4ClockShift = 0;
+    bool ch4LSFRWidth = 0;
+    uint8_t ch4DividerCode = 0.0;
+
+    uint16_t ch4LSFR = 0;
+
+    bool ch4Left = false;
+    bool ch4Right = false;
+
+    void clockChannel4Length();
+    void clockChannel4Envelope();
 };
 
 #endif //GAMECATEMU_APU_H
