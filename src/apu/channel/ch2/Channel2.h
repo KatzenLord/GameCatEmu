@@ -12,8 +12,6 @@ public:
     void reset() override;
     void writeRegister(int reg, uint8_t value) override;
     uint8_t readRegister(int reg) override;
-protected:
-    
 };
 
 

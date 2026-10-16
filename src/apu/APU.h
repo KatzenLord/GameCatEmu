@@ -41,7 +41,9 @@ private:
 
     Channel1 ch1;
     Channel2 ch2;
-    std::array<AudioChannel*, 4> audioChannels {
+
+
+    std::array<AudioChannel*, 2> audioChannels {
         &ch1,
         &ch2,
     };

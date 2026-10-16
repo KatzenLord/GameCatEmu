@@ -44,3 +44,7 @@ void Channel2::writeRegister(int reg, uint8_t value) {
         default: return;
     }
 }
+
+uint8_t Channel2::readRegister(int reg) {
+    return regs[reg];
+}

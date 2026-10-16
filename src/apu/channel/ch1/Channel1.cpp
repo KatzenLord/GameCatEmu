@@ -88,3 +88,7 @@ void Channel1::writeRegister(int reg, uint8_t value) {
         default: return;
     }
 }
+
+uint8_t Channel1::readRegister(int reg) {
+    return regs[reg];
+}
