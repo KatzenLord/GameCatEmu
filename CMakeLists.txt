@@ -38,6 +38,13 @@ add_executable(GameCatEmu
         src/bus/Interrupt.h
         src/apu/APU.cpp
         src/apu/APU.h
+		src/apu/channel/AudioChannel.h
+		src/apu/channel/pulse/PulseChannel.cpp
+		src/apu/channel/pulse/PulseChannel.h
+		src/apu/channel/ch1/Channel1.cpp
+		src/apu/channel/ch1/Channel1.h
+		src/apu/channel/ch2/Channel2.cpp
+		src/apu/channel/ch2/Channel2.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)
