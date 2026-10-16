@@ -57,10 +57,10 @@ void PulseChannel::clockEnvelope() {
         if (envelopeIncrease) {
             if (volume < 15) {
                 volume++;
-            } else {
-                if (volume > 0)
-                    volume--;
             }
+        } else {
+            if (volume > 0)
+                volume--;
         }
     }
 }

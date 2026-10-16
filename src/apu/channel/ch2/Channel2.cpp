@@ -5,9 +5,9 @@
 #include "Channel2.h"
 
 void Channel2::reset() {
-    regs[1] = 0x3F;
-    regs[2] = 0x00;
-    regs[4] = 0xBF;
+    writeRegister(1, 0x3F);
+    writeRegister(2, 0x00);
+    writeRegister(4, 0xBF);
 }
 
 void Channel2::writeRegister(int reg, uint8_t value) {

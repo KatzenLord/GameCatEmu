@@ -46,8 +46,8 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         ch1.setLeft((nr51 & 0x10) != 0);
         ch1.setRight((nr51 & 0x01) != 0);
 
-        ch1.setLeft((nr51 & 0x20) != 0);
-        ch1.setRight((nr51 & 0x02) != 0);
+        ch2.setLeft((nr51 & 0x20) != 0);
+        ch2.setRight((nr51 & 0x02) != 0);
 
         ch3Left = (nr51 & 0x40) != 0;
         ch3Right = (nr51 & 0x04) != 0;

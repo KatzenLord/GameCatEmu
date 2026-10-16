@@ -5,10 +5,10 @@
 #include "Channel1.h"
 
 void Channel1::reset() {
-    regs[0] = 0x80;
-    regs[1] = 0xBF;
-    regs[2] = 0xF3;
-    regs[4] = 0xBF;
+    writeRegister(0, 0x80);
+    writeRegister(1, 0xBF);
+    writeRegister(2, 0xF3);
+    writeRegister(4, 0xBF);
 }
 
 void Channel1::clockSweep() {
@@ -73,7 +73,7 @@ void Channel1::writeRegister(int reg, uint8_t value) {
             lengthEnabled = (regs[reg] & 0x40) != 0;
             if ((regs[reg] & 0x80)) {
                 if (lengthCounter == 0)
-                    lengthCounter = 0;
+                    lengthCounter = 64;
 
                 enabled = dacEnabled;
                 volume = initialVolume;
