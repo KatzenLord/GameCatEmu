@@ -5,9 +5,10 @@
 #include "PulseChannel.h"
 
 #include <algorithm>
+#include <iostream>
 
 void PulseChannel::tick(int cycles) {
-    if (!enabled || dacEnabled)
+    if (!enabled || !dacEnabled)
         return;
 
     timer -= cycles;
@@ -18,7 +19,7 @@ void PulseChannel::tick(int cycles) {
 }
 
 float PulseChannel::getSample() const {
-    if (!enabled || dacEnabled)
+    if (!enabled || !dacEnabled)
         return 0.0;
 
     const bool high =

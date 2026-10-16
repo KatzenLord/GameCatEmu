@@ -4,6 +4,8 @@
 
 #include "APU.h"
 
+#include <iostream>
+
 APU::APU() {
     reset();
 }

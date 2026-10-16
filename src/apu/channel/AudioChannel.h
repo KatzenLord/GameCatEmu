@@ -9,7 +9,7 @@
 #include <array>
 #include <cstdint>
 
-constexpr float OUTPUT_VOLUME = 0.05;
+constexpr float OUTPUT_VOLUME = 0.05f;
 
 class AudioChannel {
 public:
