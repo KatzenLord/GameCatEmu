@@ -15,7 +15,7 @@ void WaveChannel::writeRegister(int reg, uint8_t value) {
     regs[reg] = value;
     switch (reg) {
         case 0:
-            dacEnabled = (regs[reg] % 0x80) != 0;
+            dacEnabled = (regs[reg] & 0x80) != 0;
             if (!dacEnabled)
                 enabled = false;
             return;

@@ -49,10 +49,6 @@ private:
         &ch4
     };
 
-    void tickChannel4(int cycles);
-
-    float getChannel4Sample() const;
-
     void generateSample();
 
     int frameSequencerTimer = 8192;

@@ -65,50 +65,69 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         return;
     }
     // Channel 1
-    if (address == 0xFF10)
+    if (address == 0xFF10) {
         ch1.writeRegister(0, value); return;
-    if (address == 0xFF11)
+    }
+    if (address == 0xFF11) {
         ch1.writeRegister(1, value); return;
-    if (address == 0xFF12)
+    }
+    if (address == 0xFF12) {
         ch1.writeRegister(2, value); return;
-    if (address == 0xFF13)
+    }
+    if (address == 0xFF13) {
         ch1.writeRegister(3, value); return;
-    if (address == 0xFF14)
+    }
+    if (address == 0xFF14) {
         ch1.writeRegister(4, value); return;
+    }
 
     // Channel 2
-    if (address == 0xFF16)
+    if (address == 0xFF16) {
         ch2.writeRegister(1, value); return;
-    if (address == 0xFF17)
+    }
+    if (address == 0xFF17) {
         ch2.writeRegister(2, value); return;
-    if (address == 0xFF18)
+    }
+    if (address == 0xFF18) {
         ch2.writeRegister(3, value); return;
-    if (address == 0xFF19)
+    }
+    if (address == 0xFF19) {
         ch2.writeRegister(4, value); return;
+    }
 
     // Channel 3
-    if (address == 0xFF1A)
+    if (address == 0xFF1A) {
         ch3.writeRegister(0, value); return;
-    if (address == 0xFF1B)
+    }
+    if (address == 0xFF1B) {
         ch3.writeRegister(1, value); return;
-    if (address == 0xFF1C)
+    }
+    if (address == 0xFF1C) {
         ch3.writeRegister(2, value); return;
-    if (address == 0xFF1D)
+    }
+    if (address == 0xFF1D) {
         ch3.writeRegister(3, value); return;
-    if (address == 0xFF1E)
+    }
+    if (address == 0xFF1E) {
         ch3.writeRegister(4, value); return;
-    if (address >= 0xFF30 && address <= 0xFF3F)
+    }
+    if (address >= 0xFF30 && address <= 0xFF3F) {
         ch3.writeWaveRam(address, value); return;
+    }
 
     // Channel 4
-    if (address == 0xFF20)
+    if (address == 0xFF20) {
         ch4.writeRegister(1, value); return;
-    if (address == 0xFF21)
+    }
+    if (address == 0xFF21) {
         ch4.writeRegister(2, value); return;
-    if (address == 0xFF22)
+    }
+    if (address == 0xFF22) {
         ch4.writeRegister(3, value); return;
-    if (address == 0xFF23)
+    }
+    if (address == 0xFF23) {
         ch4.writeRegister(4, value); return;
+    }
     return;
 }
 
@@ -161,12 +180,10 @@ void APU::tick(int cycles) {
 }
 
 void APU::generateSample() {
-    float ch4 = getChannel4Sample();
-
     float left = 0.0f;
     float right = 0.0f;
 
-    for (const AudioChannel* ch: audioChannels) {
+    for (AudioChannel* ch: audioChannels) {
         const float sample = ch->getSample();
         if (ch->getLeft()) left += sample;
         if (ch->getRight()) right += sample;
@@ -183,7 +200,6 @@ void APU::generateSample() {
 }
 
 void APU::clockFrameSequencer() {
-
     if (frameSequencerStep == 0 ||
         frameSequencerStep == 2 ||
         frameSequencerStep == 4 ||

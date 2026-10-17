@@ -15,7 +15,7 @@ void NoiseChannel::writeRegister(int reg, uint8_t value) {
     regs[reg] = value;
     switch (reg) {
         case 1:
-            lengthCounter = 64 -( regs[reg] & 0x3F);
+            lengthCounter = 64 - (regs[reg] & 0x3F);
             return;
         case 2:
             initialVolume = (regs[reg] >> 4) & 0x0F;
@@ -42,6 +42,7 @@ void NoiseChannel::writeRegister(int reg, uint8_t value) {
                 LSFR = 0x7FFF;
                 timer = NOISE_DIVISORS[divider] << clockShift;
             }
+        default: return;
     }
 }
 
