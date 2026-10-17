@@ -13,6 +13,7 @@
 #include "channel/AudioChannel.h"
 #include "channel/ch1/Channel1.h"
 #include "channel/ch2/Channel2.h"
+#include "channel/ch3/WaveChannel.h"
 
 static constexpr int SAMPLE_RATE = 48000;
 static constexpr int CPU_CLOCK = 4194304;
@@ -41,18 +42,16 @@ private:
 
     Channel1 ch1;
     Channel2 ch2;
+    WaveChannel ch3;
 
-
-    std::array<AudioChannel*, 2> audioChannels {
+    std::array<AudioChannel*, 3> audioChannels {
         &ch1,
         &ch2,
+        &ch3
     };
 
-
-    void tickChannel3(int cycles);
     void tickChannel4(int cycles);
 
-    float getChannel3Sample() const;
     float getChannel4Sample() const;
 
     void generateSample();
@@ -69,34 +68,6 @@ private:
 
     uint8_t leftVolume = 0;
     uint8_t rightVolume = 0;
-
-    // Channel 3
-    uint8_t nr30 = 0;
-    uint8_t nr31 = 0;
-    uint8_t nr32 = 0;
-    uint8_t nr33 = 0;
-    uint8_t nr34 = 0;
-    std::array<uint8_t, 16> waveRam{};
-
-    bool ch3Enabled = false;
-    bool ch3DacEnabled = false;
-
-    uint16_t ch3LengthCounter = 0;
-    bool ch3LengthEnabled = false;
-
-    uint8_t ch3Volume = 0;
-    int ch3Timer = 0;
-
-    uint8_t ch3OutputLevel = 0;
-    uint16_t ch3Period = 0;
-
-    int ch3WaveIndex = 0;
-
-    bool ch3Left = false;
-    bool ch3Right = false;
-
-    uint8_t getChannel3WaveSample() const;
-    void clockChannel3Length();
 
     // Channel 4
     uint8_t nr41 = 0;

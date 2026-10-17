@@ -45,6 +45,8 @@ add_executable(GameCatEmu
 		src/apu/channel/ch1/Channel1.h
 		src/apu/channel/ch2/Channel2.cpp
 		src/apu/channel/ch2/Channel2.h
+		src/apu/channel/ch3/WaveChannel.cpp
+		src/apu/channel/ch3/WaveChannel.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)

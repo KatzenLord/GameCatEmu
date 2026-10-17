@@ -15,11 +15,6 @@ void APU::reset() {
         ch->reset();
     }
 
-    nr30 = 0x7F;
-    nr31 = 0xFF;
-    nr32 = 0x9F;
-    nr34 = 0xBF;
-
     nr41 = 0xFF;
     nr42 = 0x00;
     nr43 = 0x00;
@@ -49,8 +44,8 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         ch2.setLeft((nr51 & 0x20) != 0);
         ch2.setRight((nr51 & 0x02) != 0);
 
-        ch3Left = (nr51 & 0x40) != 0;
-        ch3Right = (nr51 & 0x04) != 0;
+        ch3.setLeft((nr51 & 0x40) != 0);
+        ch3.setRight((nr51 & 0x04) != 0);
 
         ch4Left = (nr51 & 0x80) != 0;
         ch4Right = (nr51 & 0x08) != 0;
@@ -68,9 +63,6 @@ void APU::writeReg(uint16_t address, uint8_t value) {
                 ch->setEnabled(false);
                 ch->setDac(false);
             }
-
-            ch3Enabled = false;
-            ch3DacEnabled = false;
 
             ch4Enabled = false;
             ch4DacEnabled = false;
@@ -123,45 +115,27 @@ void APU::writeReg(uint16_t address, uint8_t value) {
 
     // Channel 3
     if (address == 0xFF1A) {
-        nr30 = value;
-        ch3DacEnabled = (nr30 & 0x80) != 0;
-        if (!ch3DacEnabled) {
-            ch3Enabled = false;
-        }
+        ch3.writeRegister(0, value);
         return;
     }
     if (address == 0xFF1B) {
-        nr31 = value;
-        ch3LengthCounter = 256 - nr31;
+        ch3.writeRegister(1, value);
         return;
     }
     if (address == 0xFF1C) {
-        nr32 = value;
-        ch3OutputLevel = (nr32 >> 5) & 0x03;
+        writeReg(2, value);
         return;
     }
     if (address == 0xFF1D) {
-        nr33 = value;
-        ch3Period = (ch3Period & 0x0700) | static_cast<uint16_t>(nr33);
+        ch3.writeRegister(3, value);
         return;
     }
     if (address == 0xFF1E) {
-        nr34 = value;
-        ch3Period = (ch3Period & 0x00FF) | (static_cast<uint16_t>(nr34 & 0x07) << 8);
-        ch3LengthEnabled = (nr34 & 0x40) != 0;
-        if ((nr34 & 0x80) != 0) {
-            ch3Enabled = ch3DacEnabled;
-            if (ch3LengthCounter == 0) {
-                ch3LengthCounter = 256;
-            }
-            ch3Volume = ch3OutputLevel;
-            ch3WaveIndex = 0;
-            ch3Timer = (2048 - ch3Period) * 2;
-        }
+        ch3.writeRegister(4, value);
         return;
     }
     if (address >= 0xFF30 && address <= 0xFF3F) {
-        waveRam[address - 0xFF30] = value;
+        ch3.writeWaveRam(address, value);
         return;
     }
 
@@ -211,7 +185,7 @@ void APU::writeReg(uint16_t address, uint8_t value) {
 
 uint8_t APU::readReg(uint16_t address) const {
     if (address >= 0xFF30 && address <= 0xFF3F) {
-        return waveRam[address - 0xFF30];
+        return ch3.readWaveRam(address);
     }
     switch (address) {
         case 0xFF24:
@@ -226,7 +200,7 @@ uint8_t APU::readReg(uint16_t address) const {
             if (nr52 & 0x80) result |= 0x80;
             if (ch1.getEnabled()) result |= 0x01;
             if (ch2.getEnabled()) result |= 0x02;
-            if (ch3Enabled) result |= 0x04;
+            if (ch3.getEnabled()) result |= 0x04;
             if (ch4Enabled) result |= 0x08;
 
             return result;
@@ -240,7 +214,6 @@ void APU::tick(int cycles) {
     for (AudioChannel* ch: audioChannels) {
         ch->tick(cycles);
     }
-    tickChannel3(cycles);
     tickChannel4(cycles);
 
     frameSequencerTimer -= cycles;
@@ -258,18 +231,6 @@ void APU::tick(int cycles) {
         sampleCounter -= cyclesPerSample;
 
         generateSample();
-    }
-}
-
-void APU::tickChannel3(int cycles) {
-    if (!ch3Enabled || !ch3DacEnabled)
-        return;
-
-    ch3Timer -= cycles;
-
-    while (ch3Timer <= 0) {
-        ch3Timer += (2048 - ch3Period) * 2;
-        ch3WaveIndex = (ch3WaveIndex + 1) & 0x1F;
     }
 }
 
@@ -292,41 +253,6 @@ void APU::tickChannel4(int cycles) {
     }
 }
 
-uint8_t APU::getChannel3WaveSample() const {
-    const uint8_t byte = waveRam[ch3WaveIndex / 2];
-
-    if ((ch3WaveIndex & 1) == 0) {
-        return byte >> 4;
-    }
-    return byte & 0x0F;
-}
-
-float APU::getChannel3Sample() const {
-    if (!ch3Enabled || !ch3DacEnabled)
-        return 0.0f;
-
-    uint8_t sample = getChannel3WaveSample();
-
-    switch (ch3OutputLevel) {
-        case 0:
-            sample = 0;
-            break;
-        case 1:
-            break;
-        case 2:
-            sample >>= 1;
-            break;
-        case 3:
-            sample >>= 2;
-            break;
-    }
-
-    float normalized = static_cast<float>(sample) / 15.0f;
-    normalized = normalized * 2.0f - 1.0f;
-
-    return normalized * 0.05f;
-}
-
 float APU::getChannel4Sample() const {
     if (!ch4Enabled || !ch4DacEnabled)
         return 0.0f;
@@ -339,7 +265,6 @@ float APU::getChannel4Sample() const {
 }
 
 void APU::generateSample() {
-    float ch3 = getChannel3Sample();
     float ch4 = getChannel4Sample();
 
     float left = 0.0f;
@@ -350,9 +275,6 @@ void APU::generateSample() {
         if (ch->getLeft()) left += sample;
         if (ch->getRight()) right += sample;
     }
-
-    if (ch3Left) left += ch3;
-    if (ch3Right) right += ch3;
 
     if (ch4Left) left += ch4;
     if (ch4Right) right += ch4;
@@ -376,7 +298,7 @@ void APU::clockFrameSequencer() {
 
         ch1.clockLength();
         ch2.clockLength();
-        clockChannel3Length();
+        ch3.clockLength();
         clockChannel4Length();
 
         if (frameSequencerStep == 2 || frameSequencerStep == 6) {
@@ -388,19 +310,6 @@ void APU::clockFrameSequencer() {
         clockChannel4Envelope();
     }
     frameSequencerStep = (frameSequencerStep + 1) & 0x07;
-}
-
-void APU::clockChannel3Length() {
-    if (!ch3LengthEnabled)
-        return;
-
-    if (ch3LengthCounter > 0) {
-        ch3LengthCounter--;
-
-        if (ch3LengthCounter == 0) {
-            ch3Enabled = false;
-        }
-    }
 }
 
 void APU::clockChannel4Length() {
