@@ -14,13 +14,10 @@
 #include "channel/ch1/Channel1.h"
 #include "channel/ch2/Channel2.h"
 #include "channel/ch3/WaveChannel.h"
+#include "channel/ch4/NoiseChannel.h"
 
 static constexpr int SAMPLE_RATE = 48000;
 static constexpr int CPU_CLOCK = 4194304;
-
-static constexpr int NOISE_DIVISORS[8] = {
-    8, 16, 32, 48, 64, 80, 96, 112
-};
 
 class APU {
 public:
@@ -43,11 +40,13 @@ private:
     Channel1 ch1;
     Channel2 ch2;
     WaveChannel ch3;
+    NoiseChannel ch4;
 
-    std::array<AudioChannel*, 3> audioChannels {
+    std::array<AudioChannel*, 4> audioChannels {
         &ch1,
         &ch2,
-        &ch3
+        &ch3,
+        &ch4
     };
 
     void tickChannel4(int cycles);
@@ -68,38 +67,6 @@ private:
 
     uint8_t leftVolume = 0;
     uint8_t rightVolume = 0;
-
-    // Channel 4
-    uint8_t nr41 = 0;
-    uint8_t nr42 = 0;
-    uint8_t nr43 = 0;
-    uint8_t nr44 = 0;
-
-    bool ch4Enabled = false;
-    bool ch4DacEnabled = false;
-
-    uint16_t ch4LengthCounter = 0;
-    bool ch4LengthEnabled = false;
-
-    uint8_t ch4Volume = 0;
-    uint8_t ch4InitialVolume = 0;
-    int ch4Timer = 0;
-
-    bool ch4EnvelopeIncrease = false;
-    uint8_t ch4EnvelopePace = 0;
-    uint8_t ch4EnvelopeTimer = 0;
-
-    uint8_t ch4ClockShift = 0;
-    bool ch4LSFRWidth = 0;
-    uint8_t ch4DividerCode = 0.0;
-
-    uint16_t ch4LSFR = 0;
-
-    bool ch4Left = false;
-    bool ch4Right = false;
-
-    void clockChannel4Length();
-    void clockChannel4Envelope();
 };
 
 #endif //GAMECATEMU_APU_H
