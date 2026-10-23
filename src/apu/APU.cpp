@@ -140,11 +140,11 @@ uint8_t APU::readReg(uint16_t address) const {
             uint8_t result = 0x70;
 
             if (nr52 & 0x80) result |= 0x80;
-            if (ch1.getEnabled()) result |= 0x01;
-            if (ch2.getEnabled()) result |= 0x02;
-            if (ch3.getEnabled()) result |= 0x04;
-            if (ch4.getEnabled()) result |= 0x08;
-
+            uint8_t pos = 1;
+            for (AudioChannel* ch: audioChannels) {
+                if (ch->getEnabled()) result |= pos;
+                pos <<= 1;
+            }
             return result;
         }
         default:
