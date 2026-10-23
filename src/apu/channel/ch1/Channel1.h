@@ -11,7 +11,7 @@ class Channel1 : public PulseChannel{
 public:
     void clockSweep();
     void reset() override;
-    void writeRegister(int reg, uint8_t value) override;
+    void writeRegister(int reg, uint8_t value, bool shouldExtraClock) override;
     uint8_t readRegister(int reg) const override;
     void powerOff() override;
 protected:

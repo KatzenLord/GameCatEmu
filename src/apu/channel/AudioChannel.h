@@ -18,7 +18,7 @@ public:
     virtual void tick(int cycles) = 0;
     virtual float getSample() const = 0;
 
-    virtual void writeRegister(int reg, uint8_t value) = 0;
+    virtual void writeRegister(int reg, uint8_t value, bool shouldExtraClock) = 0;
     virtual uint8_t readRegister(int reg) const = 0;
 
     virtual void reset() = 0;

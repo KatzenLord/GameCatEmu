@@ -10,7 +10,7 @@
 class Channel2 : public PulseChannel {
 public:
     void reset() override;
-    void writeRegister(int reg, uint8_t value) override;
+    void writeRegister(int reg, uint8_t value, bool shouldExtraClock) override;
     uint8_t readRegister(int reg) const override;
 };
 

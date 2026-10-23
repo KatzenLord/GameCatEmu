@@ -33,6 +33,8 @@ public:
 private:
     void reset();
 
+    bool shouldExtraClockLength() const;
+
     double sampleCounter = 0.0;
 
     std::vector<float> audioBuffer;

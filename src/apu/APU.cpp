@@ -71,22 +71,26 @@ void APU::writeReg(uint16_t address, uint8_t value) {
 
     // Channel 1
     if (address >= 0xFF10 && address <= 0xFF14) {
-        ch1.writeRegister(address - 0xFF10, value); return;
+        uint8_t reg = address - 0xFF10;
+        ch1.writeRegister(reg, value, reg == 4 ? shouldExtraClockLength() : false); return;
     }
 
     // Channel 2
     if (address >= 0xFF16 && address <= 0xFF19) {
-        ch2.writeRegister((address - 0xFF16) + 1, value); return;
+        uint8_t reg = (address - 0xFF16) + 1;
+        ch2.writeRegister(reg, value, reg == 4 ? shouldExtraClockLength() : false); return;
     }
 
     // Channel 3
     if (address >= 0xFF1A && address <= 0xFF1E) {
-        ch3.writeRegister( address - 0xFF1A, value); return;
+        uint8_t reg = address - 0xFF1A;
+        ch3.writeRegister(reg, value, reg == 4 ? shouldExtraClockLength() : false); return;
     }
 
     // Channel 4
     if (address >= 0xFF20 && address <= 0xFF23) {
-        ch4.writeRegister((address - 0xFF20) + 1, value); return;
+        uint8_t reg = (address - 0xFF20) + 1;
+        ch4.writeRegister(reg, value, reg == 4 ? shouldExtraClockLength() : false); return;
     }
     return;
 }
@@ -201,4 +205,8 @@ const std::vector<float> &APU::getAudioBuffer() const {
 
 void APU::clearAudioBuffer() {
     audioBuffer.clear();
+}
+
+bool APU::shouldExtraClockLength() const {
+    return (frameSequencerStep & 1) != 0;
 }

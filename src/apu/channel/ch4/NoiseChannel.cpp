@@ -5,19 +5,20 @@
 #include "NoiseChannel.h"
 
 void NoiseChannel::reset() {
-    writeRegister(1, 0xFF);
-    writeRegister(2, 0x00);
-    writeRegister(3, 0x00);
-    writeRegister(4, 0xBF);
+    writeRegister(1, 0xFF, false);
+    writeRegister(2, 0x00, false);
+    writeRegister(3, 0x00, false);
+    writeRegister(4, 0xBF, false);
 }
 
-void NoiseChannel::writeRegister(int reg, uint8_t value) {
+void NoiseChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
     regs[reg] = value;
     switch (reg) {
-        case 1:
+        case 1: {
             lengthCounter = 64 - (regs[reg] & 0x3F);
             return;
-        case 2:
+        }
+        case 2: {
             initialVolume = (regs[reg] >> 4) & 0x0F;
             envelopeIncrease = (regs[reg] & 0x08) != 0;
             envelopePace = regs[reg] & 0x07;
@@ -26,22 +27,42 @@ void NoiseChannel::writeRegister(int reg, uint8_t value) {
             if (!dacEnabled)
                 enabled = false;
             return;
-        case 3:
+        }
+        case 3: {
             clockShift = (regs[reg] >> 4) & 0x0F;
             LSFRWidth = (regs[reg] & 0x08) != 0;
             divider = regs[reg] & 0x07;
             return;
-        case 4:
+        }
+        case 4: {
+            const bool oldLengthEnabled = lengthEnabled;
+
+            if (!oldLengthEnabled &&
+                lengthCounter &&
+                shouldExtraClock &&
+                lengthCounter > 0) {
+                lengthCounter--;
+
+                if (lengthCounter == 0)
+                    enabled = false;
+                }
+
             lengthEnabled = (regs[reg] & 0x40) != 0;
             if (regs[reg] & 0x80) {
-                if (lengthCounter == 0)
+                if (lengthCounter == 0) {
                     lengthCounter = 64;
+
+                    if (lengthEnabled && shouldExtraClock)
+                        lengthCounter--;
+                }
                 enabled = dacEnabled;
                 volume = initialVolume;
                 envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
                 LSFR = 0x7FFF;
                 timer = NOISE_DIVISORS[divider] << clockShift;
             }
+            return;
+        }
         default: return;
     }
 }
@@ -139,7 +160,7 @@ void NoiseChannel::powerOff() {
     LSFRWidth = false;
     divider = 0.0;
     LSFR = 0;
-    
+
     leftEnabled = false;
     rightEnabled = false;
 }

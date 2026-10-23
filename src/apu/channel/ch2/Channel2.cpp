@@ -5,19 +5,20 @@
 #include "Channel2.h"
 
 void Channel2::reset() {
-    writeRegister(1, 0x3F);
-    writeRegister(2, 0x00);
-    writeRegister(4, 0xBF);
+    writeRegister(1, 0x3F, false);
+    writeRegister(2, 0x00, false);
+    writeRegister(4, 0xBF, false);
 }
 
-void Channel2::writeRegister(int reg, uint8_t value) {
+void Channel2::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
     regs[reg] = value;
     switch (reg) {
-        case 1:
+        case 1: {
             duty = (regs[reg] >> 6) & 0x03;
             lengthCounter = 64 - (regs[reg] & 0x3F);
             return;
-        case 2:
+        }
+        case 2: {
             initialVolume = (regs[reg] >> 4) & 0x0F;
             envelopeIncrease = (regs[reg] & 0x08) != 0;
             envelopePace = regs[reg] & 0x07;
@@ -25,15 +26,34 @@ void Channel2::writeRegister(int reg, uint8_t value) {
             if (!dacEnabled)
                 enabled = false;
             return;
-        case 3:
+        }
+        case 3: {
             period = (period & 0x0700) | static_cast<uint16_t>(regs[reg]);
             return;
-        case 4:
+        }
+        case 4: {
+            bool oldLengthEnabled = lengthEnabled;
+
             period = (period & 0x00FF) | (static_cast<uint16_t>(regs[reg] & 0x07) << 8);
+
+            if (!oldLengthEnabled &&
+                lengthCounter &&
+                shouldExtraClock &&
+                lengthCounter > 0) {
+                lengthCounter--;
+
+                if (lengthCounter == 0)
+                    enabled = false;
+                }
+
             lengthEnabled = (regs[reg] & 0x40) != 0;
             if ((regs[reg] & 0x80)) {
-                if (lengthCounter == 0)
+                if (lengthCounter == 0) {
                     lengthCounter = 64;
+
+                    if (lengthEnabled && shouldExtraClock)
+                        lengthCounter--;
+                }
                 enabled = dacEnabled;
                 volume = initialVolume;
                 envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
@@ -41,6 +61,7 @@ void Channel2::writeRegister(int reg, uint8_t value) {
                 timer = (2048 - period) * 4;
             }
             return;
+        }
         default: return;
     }
 }

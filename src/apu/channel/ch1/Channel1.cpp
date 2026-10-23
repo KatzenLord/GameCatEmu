@@ -5,10 +5,10 @@
 #include "Channel1.h"
 
 void Channel1::reset() {
-    writeRegister(0, 0x80);
-    writeRegister(1, 0xBF);
-    writeRegister(2, 0xF3);
-    writeRegister(4, 0xBF);
+    writeRegister(0, 0x80, false);
+    writeRegister(1, 0xBF, false);
+    writeRegister(2, 0xF3, false);
+    writeRegister(4, 0xBF, false);
 }
 
 void Channel1::clockSweep() {
@@ -44,19 +44,21 @@ void Channel1::clockSweep() {
     period = newPeriod;
 }
 
-void Channel1::writeRegister(int reg, uint8_t value) {
+void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
     regs[reg] = value;
     switch (reg) {
-        case 0:
+        case 0: {
             sweepPace = (regs[reg] >> 4) & 0x07;
             sweepDecrease = (regs[reg] & 0x08) != 0;
             sweepShift = regs[reg] & 0x07;
             return;
-        case 1:
+        }
+        case 1: {
             duty = (regs[reg] >> 6) & 0x03;
             lengthCounter = 64 - (regs[reg] & 0x3F);
             return;
-        case 2:
+        }
+        case 2: {
             initialVolume = (regs[reg] >> 4) & 0x0F;
             envelopeIncrease = (regs[reg] & 0x08) != 0;
             envelopePace = regs[reg] & 0x07;
@@ -65,15 +67,35 @@ void Channel1::writeRegister(int reg, uint8_t value) {
             if (!dacEnabled)
                 enabled = false;
             return;
-        case 3:
+        }
+        case 3: {
             period = (period & 0x0700) | static_cast<uint16_t>(regs[reg]);
             return;
-        case 4:
-            period = (period & 0x00FF) | (static_cast<uint16_t>(regs[reg] & 0x07) << 8);
+        }
+        case 4: {
+            bool oldLengthEnabled = lengthEnabled;
+            period = (period & 0x00FF)
+                | (static_cast<uint16_t>(regs[reg] & 0x07) << 8);
+
             lengthEnabled = (regs[reg] & 0x40) != 0;
-            if ((regs[reg] & 0x80)) {
+
+            if (!oldLengthEnabled &&
+                lengthCounter &&
+                shouldExtraClock &&
+                lengthCounter > 0) {
+                lengthCounter--;
+
                 if (lengthCounter == 0)
+                    enabled = false;
+                }
+
+            if ((regs[reg] & 0x80)) {
+                if (lengthCounter == 0) {
                     lengthCounter = 64;
+
+                    if (leftEnabled && shouldExtraClock)
+                        lengthCounter--;
+                }
 
                 enabled = dacEnabled;
                 volume = initialVolume;
@@ -85,6 +107,7 @@ void Channel1::writeRegister(int reg, uint8_t value) {
                 sweepEnabled = (sweepPace != 0 || sweepShift != 0);
             }
             return;
+        }
         default: return;
     }
 }

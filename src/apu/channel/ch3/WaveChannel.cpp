@@ -5,40 +5,62 @@
 #include "WaveChannel.h"
 
 void WaveChannel::reset() {
-    writeRegister(0, 0x7F);
-    writeRegister(1, 0xFF);
-    writeRegister(2, 0x9F);
-    writeRegister(4, 0xBF);
+    writeRegister(0, 0x7F, false);
+    writeRegister(1, 0xFF, false);
+    writeRegister(2, 0x9F, false);
+    writeRegister(4, 0xBF, false);
 }
 
-void WaveChannel::writeRegister(int reg, uint8_t value) {
+void WaveChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
     regs[reg] = value;
     switch (reg) {
-        case 0:
+        case 0: {
             dacEnabled = (regs[reg] & 0x80) != 0;
             if (!dacEnabled)
                 enabled = false;
             return;
-        case 1:
+        }
+        case 1: {
             lengthCounter = 256 - regs[reg];
             return;
-        case 2:
+        }
+        case 2: {
             outputLevel = (regs[reg] >> 5) & 0x03;
             return;
-        case 3:
+        }
+        case 3: {
             period = (period & 0x0700) | static_cast<uint16_t>(regs[reg]);
             return;
-        case 4:
+        }
+        case 4: {
+            bool oldLengthEnabled = lengthEnabled;
+
             period = (period & 0x00FF) | (static_cast<uint16_t>(regs[reg] & 0x07) << 8);
+
+            if (!oldLengthEnabled &&
+                lengthCounter &&
+                shouldExtraClock &&
+                lengthCounter > 0) {
+                lengthCounter--;
+
+                if (lengthCounter == 0)
+                    enabled = false;
+                }
+
             lengthEnabled = (regs[reg] & 0x40) != 0;
             if (regs[reg] & 0x80) {
-                if (lengthCounter == 0)
+                if (lengthCounter == 0) {
                     lengthCounter = 256;
+
+                    if (lengthEnabled && shouldExtraClock)
+                        lengthCounter--;
+                }
                 enabled = dacEnabled;
                 waveIndex = 0;
                 timer = (2048 - period) * 2;
             }
             return;
+        }
         default: return;
     }
 }
