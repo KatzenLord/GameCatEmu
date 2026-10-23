@@ -90,5 +90,11 @@ void Channel1::writeRegister(int reg, uint8_t value) {
 }
 
 uint8_t Channel1::readRegister(int reg) {
-    return regs[reg];
+    switch (reg) {
+        case 0: return regs[reg];
+        case 1: return regs[reg] | 0x3F;
+        case 2: return regs[reg];
+        case 4: return regs[reg] | 0xBF;
+        default: return 0xFF;
+    }
 }

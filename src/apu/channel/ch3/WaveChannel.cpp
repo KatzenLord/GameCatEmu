@@ -44,12 +44,16 @@ void WaveChannel::writeRegister(int reg, uint8_t value) {
 }
 
 uint8_t WaveChannel::readRegister(int reg) {
-    return regs[reg];
+    switch (reg) {
+        case 0: return regs[reg] | 0x7F;
+        case 2: return regs[reg] | 0x9F;
+        case 4: return regs[reg] | 0xBF;
+        default: return 0xFF;
+    }
 }
 
 void WaveChannel::writeWaveRam(uint16_t address, uint8_t value) {
     waveRam[address - 0xFF30] = value;
-    return;
 }
 
 uint8_t WaveChannel::readWaveRam(uint16_t address) const {
