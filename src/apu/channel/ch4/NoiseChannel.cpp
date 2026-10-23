@@ -117,3 +117,29 @@ void NoiseChannel::clockEnvelope() {
         }
     }
 }
+
+void NoiseChannel::powerOff() {
+    regs.fill(0);
+
+    enabled = false;
+    dacEnabled = false;
+
+    timer = 0;
+    lengthCounter = 0;
+    lengthEnabled = false;
+
+    initialVolume = 0;
+    volume = 0;
+
+    envelopeTimer = 0;
+    envelopePace = 0;
+    envelopeIncrease = false;
+
+    clockShift = 0;
+    LSFRWidth = false;
+    divider = 0.0;
+    LSFR = 0;
+    
+    leftEnabled = false;
+    rightEnabled = false;
+}

@@ -22,6 +22,8 @@ public:
 
     void clockLength();
     void clockEnvelope();
+
+    void powerOff() override;
 protected:
     uint8_t initialVolume = 0;
     uint8_t volume = 0;

@@ -64,3 +64,29 @@ void PulseChannel::clockEnvelope() {
         }
     }
 }
+
+void PulseChannel::powerOff() {
+    regs.fill(0);
+
+    enabled = false;
+    dacEnabled = false;
+
+    timer = 0;
+    lengthCounter = 0;
+    lengthEnabled = false;
+
+    duty = 0;
+    dutyPosition = 0;
+
+    period = 0;
+
+    initialVolume = 0;
+    volume = 0;
+
+    envelopeTimer = 0;
+    envelopePace = 0;
+    envelopeIncrease = false;
+
+    leftEnabled = false;
+    rightEnabled = false;
+}

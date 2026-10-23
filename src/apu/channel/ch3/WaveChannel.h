@@ -21,6 +21,8 @@ public:
     uint8_t readWaveRam(uint16_t address) const;
 
     void clockLength();
+
+    void powerOff() override;
 protected:
     std::array<uint8_t, 16> waveRam{};
 

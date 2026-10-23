@@ -34,6 +34,8 @@ public:
 
     bool getDac() const {return dacEnabled;}
     void setDac(bool val){dacEnabled = val;}
+
+    virtual void powerOff() = 0;
 protected:
     std::array<uint8_t, 5> regs{};
 

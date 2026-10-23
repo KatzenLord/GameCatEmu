@@ -42,22 +42,33 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         return;
     }
     if (address == 0xFF26) {
-
+        const bool wasEnabled = (nr52 & 0x80) != 0;
         const bool enable = (value & 0x80) != 0;
-
-        if (!enable) {
+        if (wasEnabled && !enable) {
             nr52 = 0;
 
+            nr50 = 0;
+            nr51 = 0;
+
             for (AudioChannel* ch: audioChannels) {
-                ch->setEnabled(false);
-                ch->setDac(false);
+                ch->powerOff();
             }
         }
-        else {
+        else if (!wasEnabled && enable) {
             nr52 = 0x80;
         }
         return;
     }
+
+    if (address >= 0xFF30 && address <= 0xFF3F) {
+        ch3.writeWaveRam(address, value); return;
+    }
+
+    if (!(nr52 & 0x80)) {
+        if (address < 0xFF30 || address > 0xFF3F)
+            return;
+    }
+
     // Channel 1
     if (address == 0xFF10) {
         ch1.writeRegister(0, value); return;
@@ -105,9 +116,6 @@ void APU::writeReg(uint16_t address, uint8_t value) {
     if (address == 0xFF1E) {
         ch3.writeRegister(4, value); return;
     }
-    if (address >= 0xFF30 && address <= 0xFF3F) {
-        ch3.writeWaveRam(address, value); return;
-    }
 
     // Channel 4
     if (address == 0xFF20) {
@@ -138,9 +146,11 @@ uint8_t APU::readReg(uint16_t address) const {
     if (address >= 0xFF20 && address <= 0xFF23) {
         return ch4.readRegister(address - 0xFF20);
     }
+
     if (address >= 0xFF30 && address <= 0xFF3F) {
         return ch3.readWaveRam(address);
     }
+
     switch (address) {
         case 0xFF24:
             return nr50;
@@ -149,6 +159,9 @@ uint8_t APU::readReg(uint16_t address) const {
             return nr51;
 
         case 0xFF26: {
+
+
+
             uint8_t result = 0x70;
 
             if (nr52 & 0x80) result |= 0x80;

@@ -98,3 +98,14 @@ uint8_t Channel1::readRegister(int reg) const {
         default: return 0xFF;
     }
 }
+
+void Channel1::powerOff() {
+    PulseChannel::powerOff();
+
+    sweepPace = 0;
+    sweepDecrease = false;
+    sweepShift = 0;
+    sweepTimer = 0;
+    sweepShadowPeriod = 0;
+    sweepEnabled = false;
+}

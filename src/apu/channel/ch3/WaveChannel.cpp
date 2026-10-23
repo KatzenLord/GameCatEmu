@@ -113,3 +113,21 @@ void WaveChannel::clockLength() {
             enabled= false;
     }
 }
+
+void WaveChannel::powerOff() {
+    regs.fill(0);
+
+    enabled = false;
+    dacEnabled = false;
+
+    timer = 0;
+    lengthCounter = 0;
+    lengthEnabled = false;
+
+    outputLevel = 0;
+    period = 0;
+    waveIndex = 0;
+
+    leftEnabled = false;
+    rightEnabled = false;
+}

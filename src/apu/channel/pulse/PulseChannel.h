@@ -33,6 +33,7 @@ public:
 
     void clockLength();
     void clockEnvelope();
+    void powerOff() override;
 };
 
 
