@@ -33,18 +33,12 @@ void APU::writeReg(uint16_t address, uint8_t value) {
     if (address == 0xFF25) {
         nr51 = value;
 
-        ch1.setLeft((nr51 & 0x10) != 0);
-        ch1.setRight((nr51 & 0x01) != 0);
-
-        ch2.setLeft((nr51 & 0x20) != 0);
-        ch2.setRight((nr51 & 0x02) != 0);
-
-        ch3.setLeft((nr51 & 0x40) != 0);
-        ch3.setRight((nr51 & 0x04) != 0);
-
-        ch4.setLeft((nr51 & 0x80) != 0);
-        ch4.setRight((nr51 & 0x08) != 0);
-
+        uint8_t pos = 1;
+        for (AudioChannel* ch: audioChannels) {
+            ch->setLeft((nr51 & (pos << 4)) != 0);
+            ch->setRight((nr51 & pos) != 0);
+            pos <<= 1;
+        }
         return;
     }
     if (address == 0xFF26) {
