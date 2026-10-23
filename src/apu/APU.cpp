@@ -70,65 +70,23 @@ void APU::writeReg(uint16_t address, uint8_t value) {
     }
 
     // Channel 1
-    if (address == 0xFF10) {
-        ch1.writeRegister(0, value); return;
-    }
-    if (address == 0xFF11) {
-        ch1.writeRegister(1, value); return;
-    }
-    if (address == 0xFF12) {
-        ch1.writeRegister(2, value); return;
-    }
-    if (address == 0xFF13) {
-        ch1.writeRegister(3, value); return;
-    }
-    if (address == 0xFF14) {
-        ch1.writeRegister(4, value); return;
+    if (address >= 0xFF10 && address <= 0xFF14) {
+        ch1.writeRegister(address - 0xFF10, value); return;
     }
 
     // Channel 2
-    if (address == 0xFF16) {
-        ch2.writeRegister(1, value); return;
-    }
-    if (address == 0xFF17) {
-        ch2.writeRegister(2, value); return;
-    }
-    if (address == 0xFF18) {
-        ch2.writeRegister(3, value); return;
-    }
-    if (address == 0xFF19) {
-        ch2.writeRegister(4, value); return;
+    if (address >= 0xFF16 && address <= 0xFF19) {
+        ch2.writeRegister((address - 0xFF16) + 1, value); return;
     }
 
     // Channel 3
-    if (address == 0xFF1A) {
-        ch3.writeRegister(0, value); return;
-    }
-    if (address == 0xFF1B) {
-        ch3.writeRegister(1, value); return;
-    }
-    if (address == 0xFF1C) {
-        ch3.writeRegister(2, value); return;
-    }
-    if (address == 0xFF1D) {
-        ch3.writeRegister(3, value); return;
-    }
-    if (address == 0xFF1E) {
-        ch3.writeRegister(4, value); return;
+    if (address >= 0xFF1A && address <= 0xFF1E) {
+        ch3.writeRegister( address - 0xFF1A, value); return;
     }
 
     // Channel 4
-    if (address == 0xFF20) {
-        ch4.writeRegister(1, value); return;
-    }
-    if (address == 0xFF21) {
-        ch4.writeRegister(2, value); return;
-    }
-    if (address == 0xFF22) {
-        ch4.writeRegister(3, value); return;
-    }
-    if (address == 0xFF23) {
-        ch4.writeRegister(4, value); return;
+    if (address >= 0xFF20 && address <= 0xFF23) {
+        ch4.writeRegister((address - 0xFF20) + 1, value); return;
     }
     return;
 }
@@ -137,14 +95,14 @@ uint8_t APU::readReg(uint16_t address) const {
     if (address >= 0xFF10 && address <= 0xFF14) {
         return ch1.readRegister(address - 0xFF10);
     }
-    if (address >= 0xFF15 && address <= 0xFF19) {
-        return ch2.readRegister(address - 0xFF15);
+    if (address >= 0xFF16 && address <= 0xFF19) {
+        return ch2.readRegister((address - 0xFF16) + 1);
     }
     if (address >= 0xFF1A && address <= 0xFF1E) {
         return ch3.readRegister(address - 0xFF1A);
     }
     if (address >= 0xFF20 && address <= 0xFF23) {
-        return ch4.readRegister(address - 0xFF20);
+        return ch4.readRegister((address - 0xFF20) + 1);
     }
 
     if (address >= 0xFF30 && address <= 0xFF3F) {
@@ -159,9 +117,6 @@ uint8_t APU::readReg(uint16_t address) const {
             return nr51;
 
         case 0xFF26: {
-
-
-
             uint8_t result = 0x70;
 
             if (nr52 & 0x80) result |= 0x80;
