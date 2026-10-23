@@ -126,6 +126,18 @@ void APU::writeReg(uint16_t address, uint8_t value) {
 }
 
 uint8_t APU::readReg(uint16_t address) const {
+    if (address >= 0xFF10 && address <= 0xFF14) {
+        return ch1.readRegister(address - 0xFF10);
+    }
+    if (address >= 0xFF15 && address <= 0xFF19) {
+        return ch2.readRegister(address - 0xFF15);
+    }
+    if (address >= 0xFF1A && address <= 0xFF1E) {
+        return ch3.readRegister(address - 0xFF1A);
+    }
+    if (address >= 0xFF20 && address <= 0xFF23) {
+        return ch4.readRegister(address - 0xFF20);
+    }
     if (address >= 0xFF30 && address <= 0xFF3F) {
         return ch3.readWaveRam(address);
     }

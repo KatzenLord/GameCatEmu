@@ -43,7 +43,7 @@ void WaveChannel::writeRegister(int reg, uint8_t value) {
     }
 }
 
-uint8_t WaveChannel::readRegister(int reg) {
+uint8_t WaveChannel::readRegister(int reg) const {
     switch (reg) {
         case 0: return regs[reg] | 0x7F;
         case 2: return regs[reg] | 0x9F;

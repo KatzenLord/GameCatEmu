@@ -18,7 +18,7 @@ public:
     float getSample() const override;
 
     void writeRegister(int reg, uint8_t value) override;
-    uint8_t readRegister(int reg) override;
+    uint8_t readRegister(int reg) const override;
 
     void clockLength();
     void clockEnvelope();

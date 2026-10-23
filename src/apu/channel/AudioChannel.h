@@ -19,7 +19,7 @@ public:
     virtual float getSample() const = 0;
 
     virtual void writeRegister(int reg, uint8_t value) = 0;
-    virtual uint8_t readRegister(int reg) = 0;
+    virtual uint8_t readRegister(int reg) const = 0;
 
     virtual void reset() = 0;
 

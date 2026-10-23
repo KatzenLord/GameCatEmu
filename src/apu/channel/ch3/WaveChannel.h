@@ -15,7 +15,7 @@ public:
     float getSample() const override;
 
     void writeRegister(int reg, uint8_t value) override;
-    uint8_t readRegister(int reg) override;
+    uint8_t readRegister(int reg) const override;
 
     void writeWaveRam(uint16_t address, uint8_t value);
     uint8_t readWaveRam(uint16_t address) const;

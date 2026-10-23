@@ -45,7 +45,7 @@ void Channel2::writeRegister(int reg, uint8_t value) {
     }
 }
 
-uint8_t Channel2::readRegister(int reg) {
+uint8_t Channel2::readRegister(int reg) const {
     switch (reg) {
         case 1: return regs[reg] | 0x3F;
         case 2: return regs[reg];

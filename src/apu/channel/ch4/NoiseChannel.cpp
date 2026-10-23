@@ -46,7 +46,7 @@ void NoiseChannel::writeRegister(int reg, uint8_t value) {
     }
 }
 
-uint8_t NoiseChannel::readRegister(int reg) {
+uint8_t NoiseChannel::readRegister(int reg) const {
     switch (reg) {
         case 2: return regs[reg];
         case 3: return regs[reg];
