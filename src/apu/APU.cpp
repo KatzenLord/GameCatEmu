@@ -64,7 +64,7 @@ void APU::writeReg(uint16_t address, uint8_t value) {
         ch3.writeWaveRam(address, value); return;
     }
 
-    if (!(nr52 & 0x80)) {
+    if (!(nr52 & 0x80) && !isLengthRegister(address)) {
         if (address < 0xFF30 || address > 0xFF3F)
             return;
     }
@@ -197,6 +197,13 @@ void APU::clockFrameSequencer() {
         ch4.clockEnvelope();
     }
     frameSequencerStep = (frameSequencerStep + 1) & 0x07;
+}
+
+bool APU::isLengthRegister(uint16_t address) {
+    return address == 0xFF11 ||
+           address == 0xFF16 ||
+           address == 0xFF1B ||
+           address == 0xFF20;
 }
 
 const std::vector<float> &APU::getAudioBuffer() const {

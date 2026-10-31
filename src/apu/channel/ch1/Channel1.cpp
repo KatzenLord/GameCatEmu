@@ -80,7 +80,7 @@ void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
             lengthEnabled = (regs[reg] & 0x40) != 0;
 
             if (!oldLengthEnabled &&
-                lengthCounter &&
+                lengthEnabled &&
                 shouldExtraClock &&
                 lengthCounter > 0) {
                 lengthCounter--;
@@ -93,7 +93,7 @@ void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
                 if (lengthCounter == 0) {
                     lengthCounter = 64;
 
-                    if (leftEnabled && shouldExtraClock)
+                    if (lengthEnabled && shouldExtraClock)
                         lengthCounter--;
                 }
 

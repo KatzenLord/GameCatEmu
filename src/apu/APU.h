@@ -58,6 +58,8 @@ private:
 
     void clockFrameSequencer();
 
+    bool isLengthRegister(uint16_t address);
+
     // Global Registers
     uint8_t nr50 = 0;
     uint8_t nr51 = 0;

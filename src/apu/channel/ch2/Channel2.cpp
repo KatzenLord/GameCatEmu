@@ -36,8 +36,10 @@ void Channel2::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
 
             period = (period & 0x00FF) | (static_cast<uint16_t>(regs[reg] & 0x07) << 8);
 
+            lengthEnabled = (regs[reg] & 0x40) != 0;
+
             if (!oldLengthEnabled &&
-                lengthCounter &&
+                lengthEnabled &&
                 shouldExtraClock &&
                 lengthCounter > 0) {
                 lengthCounter--;
@@ -46,7 +48,6 @@ void Channel2::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
                     enabled = false;
                 }
 
-            lengthEnabled = (regs[reg] & 0x40) != 0;
             if ((regs[reg] & 0x80)) {
                 if (lengthCounter == 0) {
                     lengthCounter = 64;

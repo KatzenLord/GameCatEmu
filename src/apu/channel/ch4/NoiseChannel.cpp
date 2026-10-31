@@ -37,8 +37,10 @@ void NoiseChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) 
         case 4: {
             const bool oldLengthEnabled = lengthEnabled;
 
+            lengthEnabled = (regs[reg] & 0x40) != 0;
+
             if (!oldLengthEnabled &&
-                lengthCounter &&
+                lengthEnabled &&
                 shouldExtraClock &&
                 lengthCounter > 0) {
                 lengthCounter--;
@@ -47,7 +49,6 @@ void NoiseChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) 
                     enabled = false;
                 }
 
-            lengthEnabled = (regs[reg] & 0x40) != 0;
             if (regs[reg] & 0x80) {
                 if (lengthCounter == 0) {
                     lengthCounter = 64;
