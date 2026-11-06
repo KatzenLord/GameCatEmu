@@ -108,6 +108,7 @@ void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
                 enabled = dacEnabled;
                 volume = initialVolume;
                 envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
+                envelopeRunning = true;
                 dutyPosition = 0;
                 timer = (2048 - period) * 4;
                 sweepShadowPeriod = period;

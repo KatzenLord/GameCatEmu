@@ -31,6 +31,7 @@ protected:
     uint8_t envelopeTimer = 0;
     uint8_t envelopePace = 0;
     bool envelopeIncrease = false;
+    bool envelopeRunning = false;
 
     uint8_t clockShift = 0;
     bool LSFRWidth = false;

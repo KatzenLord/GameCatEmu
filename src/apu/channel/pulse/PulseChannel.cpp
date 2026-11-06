@@ -44,23 +44,28 @@ void PulseChannel::clockLength() {
 }
 
 void PulseChannel::clockEnvelope() {
-    if (envelopePace == 0)
+    if (!envelopeRunning)
         return;
 
-    if (envelopeTimer > 0) {
+    if (envelopeTimer > 0)
         envelopeTimer--;
-    }
 
-    if (envelopeTimer == 0) {
-        envelopeTimer = envelopePace;
+    if (envelopeTimer != 0)
+        return;
 
-        if (envelopeIncrease) {
-            if (volume < 15) {
-                volume++;
-            }
+    envelopeTimer = (envelopePace == 0) ? 0 : envelopePace;
+
+    if (envelopeIncrease) {
+        if (volume < 15) {
+            volume++;
         } else {
-            if (volume > 0)
-                volume--;
+            envelopeIncrease = false;
+        }
+    } else {
+        if (volume > 0) {
+            volume--;
+        } else {
+            envelopeIncrease = false;
         }
     }
 }

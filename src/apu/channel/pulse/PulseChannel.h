@@ -27,6 +27,8 @@ protected:
     uint8_t envelopeTimer = 0;
     uint8_t envelopePace = 0;
     bool envelopeIncrease = false;
+
+    bool envelopeRunning = false;
 public:
     void tick(int cycles) override;
     float getSample() const override;
