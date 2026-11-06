@@ -18,6 +18,9 @@ void Channel1::clockSweep() {
     if (sweepTimer > 0)
         sweepTimer--;
 
+    if (sweepPace == 0)
+        return;
+
     if (sweepTimer != 0)
         return;
 
@@ -26,14 +29,10 @@ void Channel1::clockSweep() {
     if (sweepShift <= 0)
         return;
 
-    const uint16_t delta = sweepShadowPeriod >> sweepShift;
-    uint16_t newPeriod;
+    const uint16_t newPeriod = calculateSweepPeriod();
 
-    if (sweepDecrease) {
-        newPeriod = sweepShadowPeriod - delta;
-    } else {
-        newPeriod = sweepShadowPeriod + delta;
-    }
+    if (sweepDecrease)
+        sweepNegateUsed = true;
 
     if (newPeriod > 2047) {
         enabled = false;
@@ -42,15 +41,24 @@ void Channel1::clockSweep() {
 
     sweepShadowPeriod = newPeriod;
     period = newPeriod;
+
+    const uint16_t secondPeriod = calculateSweepPeriod();
+    if (secondPeriod > 2047)
+        enabled = false;
 }
 
 void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
     regs[reg] = value;
     switch (reg) {
         case 0: {
+            const bool oldDecrease = sweepDecrease;
+
             sweepPace = (regs[reg] >> 4) & 0x07;
             sweepDecrease = (regs[reg] & 0x08) != 0;
             sweepShift = regs[reg] & 0x07;
+
+            if (oldDecrease && !sweepDecrease && sweepNegateUsed)
+                enabled = false;
             return;
         }
         case 1: {
@@ -102,9 +110,17 @@ void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
                 envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
                 dutyPosition = 0;
                 timer = (2048 - period) * 4;
-                sweepTimer = (sweepPace == 0) ? 8 : sweepPace;
                 sweepShadowPeriod = period;
+                sweepTimer = (sweepPace == 0) ? 8 : sweepPace;
                 sweepEnabled = (sweepPace != 0 || sweepShift != 0);
+                sweepNegateUsed = false;
+
+                if (sweepShift != 0) {
+                    const uint16_t newPeriod = calculateSweepPeriod();
+
+                    if (newPeriod > 2047)
+                        enabled = false;
+                }
             }
             return;
         }
@@ -120,6 +136,15 @@ uint8_t Channel1::readRegister(int reg) const {
         case 4: return regs[reg] | 0xBF;
         default: return 0xFF;
     }
+}
+
+uint16_t Channel1::calculateSweepPeriod() const {
+    const uint16_t delta = sweepShadowPeriod >> sweepShift;
+
+    if (sweepDecrease)
+        return sweepShadowPeriod - delta;
+
+    return sweepShadowPeriod + delta;
 }
 
 void Channel1::powerOff() {

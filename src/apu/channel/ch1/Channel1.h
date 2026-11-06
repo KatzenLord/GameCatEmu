@@ -22,6 +22,10 @@ protected:
     uint8_t sweepTimer = 0;
     uint16_t sweepShadowPeriod = 0;
     bool sweepEnabled = false;
+
+    bool sweepNegateUsed = false;
+
+    uint16_t calculateSweepPeriod() const;
 };
 
 
