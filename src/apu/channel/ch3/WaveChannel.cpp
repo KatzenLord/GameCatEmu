@@ -9,6 +9,9 @@ void WaveChannel::reset() {
     writeRegister(1, 0xFF, false);
     writeRegister(2, 0x9F, false);
     writeRegister(4, 0xBF, false);
+
+    currentWaveByte = 0;
+    waveRamAccessCycles = 0;
 }
 
 void WaveChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
@@ -33,6 +36,7 @@ void WaveChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
             return;
         }
         case 4: {
+            const bool wasEnabled = enabled;
             bool oldLengthEnabled = lengthEnabled;
 
             period = (period & 0x00FF) | (static_cast<uint16_t>(regs[reg] & 0x07) << 8);
@@ -47,9 +51,12 @@ void WaveChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
 
                 if (lengthCounter == 0)
                     enabled = false;
-                }
+            }
 
             if (regs[reg] & 0x80) {
+                if (wasEnabled)
+                    applyRetriggerCorruption();
+
                 if (lengthCounter == 0) {
                     lengthCounter = 256;
 
@@ -76,14 +83,37 @@ uint8_t WaveChannel::readRegister(int reg) const {
 }
 
 void WaveChannel::writeWaveRam(uint16_t address, uint8_t value) {
-    waveRam[address - 0xFF30] = value;
+    const uint8_t pos = address - 0xFF30;
+
+    if (!enabled) {
+        waveRam[pos] = value;
+        return;
+    }
+    if (waveRamAccessCycles > 0) {
+        waveRam[currentWaveByte] = value;
+    }
 }
 
 uint8_t WaveChannel::readWaveRam(uint16_t address) const {
-    return waveRam[address - 0xFF30];
+    const uint8_t pos = address - 0xFF30;
+
+    if (!enabled)
+        return waveRam[pos];
+
+    if (waveRamAccessCycles > 0)
+        return waveRam[currentWaveByte];
+
+    return 0xFF;
 }
 
 void WaveChannel::tick(int cycles) {
+    if (waveRamAccessCycles > 0) {
+        waveRamAccessCycles -= cycles;
+
+        if (waveRamAccessCycles < 0)
+            waveRamAccessCycles = 0;
+    }
+
     if (!enabled || !dacEnabled)
         return;
 
@@ -92,6 +122,9 @@ void WaveChannel::tick(int cycles) {
     while (timer <= 0) {
         timer += (2048 - period) * 2;
         waveIndex = (waveIndex + 1) & 0x1F;
+
+        currentWaveByte = waveIndex / 2;
+        waveRamAccessCycles = 2;            // TODO proper value
     }
 }
 
@@ -101,6 +134,21 @@ uint8_t WaveChannel::getWaveSample() const {
     if ((waveIndex & 1) == 0)
         return byte >> 4;
     return byte & 0x0F;
+}
+
+void WaveChannel::applyRetriggerCorruption() {
+    const uint8_t index = currentWaveByte;
+
+    if (index < 4) {
+        waveRam[0] = waveRam[index];
+    } else {
+        const uint8_t base = index & ~0x03;
+
+        waveRam[0] = waveRam[base];
+        waveRam[1] = waveRam[base + 1];
+        waveRam[2] = waveRam[base + 2];
+        waveRam[3] = waveRam[base + 3];
+    }
 }
 
 float WaveChannel::getSample() const {
@@ -150,6 +198,8 @@ void WaveChannel::powerOff() {
     outputLevel = 0;
     period = 0;
     waveIndex = 0;
+    currentWaveByte = 0;
+    waveRamAccessCycles = 0;
 
     leftEnabled = false;
     rightEnabled = false;

@@ -29,8 +29,12 @@ protected:
     uint8_t outputLevel = 0;
     uint16_t period = 0;
     int waveIndex = 0;
+    uint8_t currentWaveByte = 0;
+    int waveRamAccessCycles = 0;
 
     uint8_t getWaveSample() const;
+
+    void applyRetriggerCorruption();
 };
 
 #endif //GAMECATEMU_WAVECHANNEL_H

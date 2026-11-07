@@ -162,6 +162,7 @@ void NoiseChannel::powerOff() {
     envelopeTimer = 0;
     envelopePace = 0;
     envelopeIncrease = false;
+    envelopeRunning = false;
 
     clockShift = 0;
     LSFRWidth = false;

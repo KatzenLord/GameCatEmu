@@ -91,6 +91,7 @@ void PulseChannel::powerOff() {
     envelopeTimer = 0;
     envelopePace = 0;
     envelopeIncrease = false;
+    envelopeRunning = false;
 
     leftEnabled = false;
     rightEnabled = false;
