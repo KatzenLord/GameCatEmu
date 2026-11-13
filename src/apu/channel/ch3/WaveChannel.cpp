@@ -54,8 +54,7 @@ void WaveChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
             }
 
             if (regs[reg] & 0x80) {
-                if (wasEnabled)
-                    applyRetriggerCorruption();
+                if (wasEnabled) applyRetriggerCorruption();
 
                 if (lengthCounter == 0) {
                     lengthCounter = 256;

@@ -59,13 +59,13 @@ void PulseChannel::clockEnvelope() {
         if (volume < 15) {
             volume++;
         } else {
-            envelopeIncrease = false;
+            envelopeRunning = false;
         }
     } else {
         if (volume > 0) {
             volume--;
         } else {
-            envelopeIncrease = false;
+            envelopeRunning = false;
         }
     }
 }

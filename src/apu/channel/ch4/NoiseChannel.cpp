@@ -58,8 +58,8 @@ void NoiseChannel::writeRegister(int reg, uint8_t value, bool shouldExtraClock) 
                 }
                 enabled = dacEnabled;
                 volume = initialVolume;
-                envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
-                envelopeRunning = true;
+                envelopeTimer = envelopePace;
+                envelopeRunning = envelopePace != 0;
                 LSFR = 0x7FFF;
                 timer = NOISE_DIVISORS[divider] << clockShift;
             }
@@ -135,13 +135,13 @@ void NoiseChannel::clockEnvelope() {
         if (volume < 15) {
             volume++;
         } else {
-            envelopeIncrease = false;
+            envelopeRunning = false;
         }
     } else {
         if (volume > 0) {
             volume--;
         } else {
-            envelopeIncrease = false;
+            envelopeRunning = false;
         }
     }
 }

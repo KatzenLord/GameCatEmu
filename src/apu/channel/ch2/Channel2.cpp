@@ -57,7 +57,8 @@ void Channel2::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
                 }
                 enabled = dacEnabled;
                 volume = initialVolume;
-                envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
+                envelopeTimer = envelopePace;
+                envelopeRunning = envelopePace != 0;
                 dutyPosition = 0;
                 timer = (2048 - period) * 4;
             }

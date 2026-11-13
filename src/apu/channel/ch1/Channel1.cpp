@@ -8,7 +8,7 @@ void Channel1::reset() {
     writeRegister(0, 0x80, false);
     writeRegister(1, 0xBF, false);
     writeRegister(2, 0xF3, false);
-    writeRegister(4, 0xBF, false);
+    writeRegister(4, 0x3F, false);
 }
 
 void Channel1::clockSweep() {
@@ -107,8 +107,8 @@ void Channel1::writeRegister(int reg, uint8_t value, bool shouldExtraClock) {
 
                 enabled = dacEnabled;
                 volume = initialVolume;
-                envelopeTimer = (envelopePace == 0) ? 8 : envelopePace;
-                envelopeRunning = true;
+                envelopeTimer = envelopePace;
+                envelopeRunning = envelopePace != 0;
                 dutyPosition = 0;
                 timer = (2048 - period) * 4;
                 sweepShadowPeriod = period;
