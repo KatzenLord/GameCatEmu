@@ -140,13 +140,6 @@ void APU::tick(int cycles) {
     for (AudioChannel* ch: audioChannels) {
         ch->tick(cycles);
     }
-
-    frameSequencerTimer -= cycles;
-    while (frameSequencerTimer <= 0) {
-        frameSequencerTimer += 8192;
-        clockFrameSequencer();
-    }
-
     sampleCounter += cycles;
     constexpr double cyclesPerSample = static_cast<double>(CPU_CLOCK) / SAMPLE_RATE;
 
@@ -177,7 +170,10 @@ void APU::generateSample() {
     audioBuffer.push_back(right);
 }
 
-void APU::clockFrameSequencer() {
+void APU::clockFramesequencer() {
+    if (!(nr52 & 0x80))
+        return;
+
     if (frameSequencerStep == 0 ||
         frameSequencerStep == 2 ||
         frameSequencerStep == 4 ||
@@ -215,5 +211,6 @@ void APU::clearAudioBuffer() {
 }
 
 bool APU::shouldExtraClockLength() const {
-    return (frameSequencerStep & 1) != 0;
+    return false;
+    //return (frameSequencerStep & 1) != 0;
 }

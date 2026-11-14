@@ -12,22 +12,44 @@ uint8_t Timer::readDIV() const {
     return static_cast<uint8_t>(dividerCounter >> 8);
 }
 
-void Timer::tick(int cycles) {
+bool Timer::tick(int cycles) {
+    bool apuClock = false;
+
     if (bus.consumeDivResetRequest()) {
+        const bool oldTimerSignal = timerSignal();
+        const bool oldApuSignal = (dividerCounter & (1u << 12)) != 0;
+
         dividerCounter = 0;
+        bus.setDIV(0);
+
+        const bool newTimerSignal = timerSignal();
+
+        if (oldTimerSignal && !newTimerSignal) {
+            incrementTIMA();
+        }
+        if (oldApuSignal) {
+            apuClock = true;
+        }
     }
     for (int i = 0; i < cycles; i++) {
-        const bool oldSignal = timerSignal();
+        const bool oldTimerSignal = timerSignal();
+        const bool oldApuSignal = (dividerCounter & (1u << 12)) != 0;
 
         dividerCounter++;
         bus.setDIV(static_cast<uint8_t>(dividerCounter >> 8));
 
-        const bool newSignal = timerSignal();
+        const bool newTimerSignal = timerSignal();
+        const bool newApuSignal = (dividerCounter & (1u << 12)) != 0;
 
-        if (oldSignal && !newSignal) {
+        if (oldTimerSignal && !newTimerSignal) {
             incrementTIMA();
         }
+        if (oldApuSignal && !newApuSignal) {
+            apuClock = true;
+        }
     }
+
+    return apuClock;
 }
 
 bool Timer::timerSignal() const {
@@ -61,8 +83,4 @@ void Timer::incrementTIMA() {
     } else {
         bus.write8(0xFF05, static_cast<uint8_t>(tima + 1));
     }
-}
-
-void Timer::writeDIV() {
-    dividerCounter = 0;
 }

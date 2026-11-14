@@ -28,6 +28,8 @@ public:
     void clearAudioBuffer();
     const std::vector<float>& getAudioBuffer() const;
 
+    void clockFramesequencer();
+
     uint8_t readReg(uint16_t address) const;
     void writeReg(uint16_t address, uint8_t value);
 private:
@@ -53,10 +55,7 @@ private:
 
     void generateSample();
 
-    int frameSequencerTimer = 8192;
     uint8_t frameSequencerStep = 0;
-
-    void clockFrameSequencer();
 
     bool isLengthRegister(uint16_t address);
 

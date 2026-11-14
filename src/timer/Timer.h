@@ -14,9 +14,8 @@ class Timer {
 public:
     explicit Timer(Bus& bus);
 
-    void tick(int cycles);
+    bool tick(int cycles);
     uint8_t readDIV() const;
-    void writeDIV();
 private:
     Bus& bus;
 

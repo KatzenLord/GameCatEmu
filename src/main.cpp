@@ -157,7 +157,9 @@ int main(int argc, char *argv[]) {
         while (!ppu.frameReady() && isRunning) {
             const int cycles = cpu.step();
 
-            timer.tick(cycles);
+            if (timer.tick(cycles)) {
+                apu.clockFramesequencer();
+            }
             ppu.step(cycles);
             apu.tick(cycles);
 
