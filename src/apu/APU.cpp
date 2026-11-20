@@ -211,6 +211,5 @@ void APU::clearAudioBuffer() {
 }
 
 bool APU::shouldExtraClockLength() const {
-    return false;
-    //return (frameSequencerStep & 1) != 0;
+    return (frameSequencerStep & 1) != 0;
 }

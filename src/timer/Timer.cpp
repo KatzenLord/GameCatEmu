@@ -31,7 +31,36 @@ bool Timer::tick(int cycles) {
             apuClock = true;
         }
     }
+    uint8_t newTAC;
+    if (bus.consumeTacWriteRequest(newTAC)) {
+        writeTAC(newTAC);
+    }
+
+    uint8_t newTIMA;
+    if (bus.consumeTimaWriteRequest(newTIMA)) {
+        writeTIMA(newTIMA);
+    }
+
+    uint8_t newTMA;
+    if (bus.consumeTmaWriteRequest(newTMA)) {
+        writeTMA(newTMA);
+    }
+
     for (int i = 0; i < cycles; i++) {
+        if (timaReloadPending) {
+            timaReloadDelay--;
+
+            if (timaReloadDelay == 0) {
+                timaReloading = true;
+
+                const uint8_t tma = bus.read8(0xFF06);
+                bus.setTIMA(tma);
+                bus.requestInterrupt(Interrupt::Timer);
+
+                timaReloadPending = false;
+            }
+        }
+
         const bool oldTimerSignal = timerSignal();
         const bool oldApuSignal = (dividerCounter & (1u << 12)) != 0;
 
@@ -47,6 +76,7 @@ bool Timer::tick(int cycles) {
         if (oldApuSignal && !newApuSignal) {
             apuClock = true;
         }
+        timaReloading = false;
     }
 
     return apuClock;
@@ -75,12 +105,40 @@ void Timer::incrementTIMA() {
     uint8_t tima = bus.read8(0xFF05);
 
     if (tima == 0xFF) {
-        const uint8_t tma = bus.read8(0xFF06);
+        bus.setTIMA(0x00);
 
-        bus.write8(0xFF05, tma);
-
-        bus.requestInterrupt(Interrupt::Timer);
-    } else {
-        bus.write8(0xFF05, static_cast<uint8_t>(tima + 1));
+        timaReloadPending = true;
+        timaReloadDelay = 4;
+        return;
     }
+    bus.setTIMA(static_cast<uint8_t>(tima + 1));
+}
+
+void Timer::writeTAC(uint8_t value) {
+    const bool oldSignal = timerSignal();
+    bus.setTAC(value);
+
+    const bool newSignal = timerSignal();
+    if (oldSignal && !newSignal) {
+        incrementTIMA();
+    }
+}
+
+void Timer::writeTIMA(uint8_t value) {
+    if (timaReloading)
+        return;
+
+    bus.setTIMA(value);
+
+    if (timaReloadPending) {
+        timaReloadPending = false;
+        timaReloadDelay = 0;
+    }
+}
+
+void Timer::writeTMA(uint8_t value) const {
+    bus.setTMA(value);
+
+    if (timaReloading)
+        bus.setTIMA(value);
 }

@@ -20,6 +20,18 @@ uint8_t Bus::read8(const uint16_t address) const {
         return div;
     }
 
+    if (address == 0xFF05) {
+        return tima;
+    }
+
+    if (address == 0xFF06) {
+        return tma;
+    }
+
+    if (address == 0xFF07) {
+        return tac | 0xF8;
+    }
+
     if (address >= 0xFF10 && address <= 0xFF3F) {
         return apu.readReg(address);
     }
@@ -73,6 +85,29 @@ void Bus::write8(uint16_t address, uint8_t data) {
         return;
     }
 
+    if (address == 0xFF04) {
+        divResetRequested = true;
+        return;
+    }
+
+    if (address == 0xFF05) {
+        pendingTimaValue = data;
+        timaWritePending = true;
+        return;
+    }
+
+    if (address == 0xFF06) {
+        pendingTmaValue = data;
+        tmaWritePending = true;
+        return;
+    }
+
+    if (address == 0xFF07) {
+        tacWritePending = true;
+        pendingTacValue = data;
+        return;
+    }
+
     if (address >= 0xFF10 && address <= 0xFF3F) {
         apu.writeReg(address, data);
         return;
@@ -87,11 +122,6 @@ void Bus::write8(uint16_t address, uint8_t data) {
         }
 
         io[0x46] = data;
-        return;
-    }
-
-    if (address == 0xFF04) {
-        divResetRequested = true;
         return;
     }
 
@@ -179,6 +209,46 @@ bool Bus::consumeDivResetRequest() {
         return false;
     }
     divResetRequested = false;
+    return true;
+}
+
+void Bus::setTAC(uint8_t value) {
+    tac = value;
+}
+
+bool Bus::consumeTacWriteRequest(uint8_t& value) {
+    if (!tacWritePending) {
+        return false;
+    }
+    tacWritePending = false;
+    value = pendingTacValue;
+    return true;
+}
+
+void Bus::setTIMA(uint8_t value) {
+    tima = value;
+}
+
+bool Bus::consumeTimaWriteRequest(uint8_t &value) {
+    if (!timaWritePending) {
+        return false;
+    }
+    timaWritePending = false;
+    value = pendingTimaValue;
+    return true;
+}
+
+void Bus::setTMA(uint8_t value) {
+    tma = value;
+}
+
+bool Bus::consumeTmaWriteRequest(uint8_t &value) {
+    if (!tmaWritePending) {
+        return false;
+    }
+
+    tmaWritePending = false;
+    value = pendingTmaValue;
     return true;
 }
 

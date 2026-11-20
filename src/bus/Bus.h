@@ -34,6 +34,15 @@ public:
     void setDIV(uint8_t value);
     bool consumeDivResetRequest();
 
+    void setTAC(uint8_t value);
+    bool consumeTacWriteRequest(uint8_t& value);
+
+    void setTIMA(uint8_t value);
+    bool consumeTimaWriteRequest(uint8_t& value);
+
+    void setTMA(uint8_t value);
+    bool consumeTmaWriteRequest(uint8_t& value);
+
     void requestInterrupt(Interrupt interrupt);
 private:
     Cartridge& cartridge;
@@ -53,6 +62,18 @@ private:
 
     uint8_t div = 0;
     bool divResetRequested = false;
+
+    bool tacWritePending = false;
+    uint8_t pendingTacValue = 0;
+    uint8_t tac = 0;
+
+    bool timaWritePending = false;
+    uint8_t pendingTimaValue = 0;
+    uint8_t tima = 0;
+
+    bool tmaWritePending = false;
+    uint8_t pendingTmaValue = 0;
+    uint8_t tma = 0;
 };
 
 #endif //GAMECATEMU_BUS_H
