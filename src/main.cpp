@@ -1,4 +1,5 @@
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -34,20 +35,34 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    const std::filesystem::path romPath = argv[1];
+    bool testMode = false;
+
+    for (int i = 2; i < argc; i++) {
+        if (std::string_view(argv[i]) == "--test") {
+            testMode = true;
+        }
+    }
     Cartridge cartridge;
 
-    if (!cartridge.loadFromFile(argv[1])) {
+    if (!cartridge.loadFromFile(romPath)) {
         return 1;
     }
 
     const CartridgeHeader& header = cartridge.getHeader();
 
-    std::cout << "ROM Loaded" << std::endl;
-    std::cout << "==================" << std::endl;
-    std::cout << "Title: " << header.title << std::endl;
-    std::cout << "Cartridge Type: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.cartridgeType) << std::dec << " -> " << header.cartridgeTypeString << std::endl;
-    std::cout << "ROM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.romSize) << std::dec << " -> " << header.romSizeString << std::endl;
-    std::cout << "RAM Size: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(header.ramSize) << std::dec << " -> " << header.ramSizeString << std::endl;
+    const auto& features = cartridge.getFeatures();
+
+    std::cout << "==================\n";
+
+    std::cout << "Mapper: "
+                << (features.mapper == MapperType::MBC0 ? "MBC0" : "MBC1")
+                << std::endl;
+
+    std::cout << "RAM: " << features.hasRam << '\n';
+    std::cout << "Battery: " << features.hasBattery << '\n';
+    std::cout << "ROM bytes: " << features.romSizeBytes << '\n';
+    std::cout << "RAM bytes: " << features.ramSizeBytes << '\n';
 
     InputHandler inputHandler{};
     Joypad joypad;
@@ -139,11 +154,40 @@ int main(int argc, char *argv[]) {
         while (SDL_PollEvent(&e)) {
             inputHandler.handleEvent(e);
 
-            if (e.type == SDL_EVENT_QUIT) {
-                isRunning = false;
-            }
+            if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_KEY_DOWN && e.key.key == SDLK_ESCAPE) {
 
-            if (e.type == SDL_EVENT_KEY_DOWN && e.key.key == SDLK_ESCAPE) {
+                if (testMode) {
+                    namespace fs = std::filesystem;
+
+                    fs::create_directory("logs");
+
+                    const fs::path outputPath = fs::path("logs") / (romPath.stem().string() + ".bmp");
+
+                    SDL_Surface* surface = SDL_CreateSurfaceFrom(
+                        160,
+                        144,
+                        SDL_PIXELFORMAT_RGBA8888,
+                        const_cast<uint32_t*>(ppu.getFramebuffer().data()),
+                        160 * sizeof(uint32_t)
+                        );
+
+                    if (!surface) {
+                        std::cerr << "Screenshot surface failed: "
+                                  << SDL_GetError() << '\n';
+                        break;
+                    }
+
+                    if (!SDL_SaveBMP(surface, outputPath.string().c_str())) {
+                        std::cerr << "Screenshot failed: "
+                                  << SDL_GetError() << '\n';
+                    } else {
+                        std::cout << "Screenshot saved: "
+                                  << outputPath << '\n';
+                    }
+
+                    SDL_DestroySurface(surface);
+                }
+
                 isRunning = false;
             }
         }

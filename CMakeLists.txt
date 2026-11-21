@@ -49,6 +49,9 @@ add_executable(GameCatEmu
 		src/apu/channel/ch3/WaveChannel.h
 		src/apu/channel/ch4/NoiseChannel.cpp
 		src/apu/channel/ch4/NoiseChannel.h
+		src/cartridge/MBC.cpp
+		src/cartridge/MBC.h
+		src/cartridge/MapperType.h
 )
 
 target_link_libraries(GameCatEmu PRIVATE SDL3::SDL3)

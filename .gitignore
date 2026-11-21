@@ -3,6 +3,8 @@ build-windows/
 cmake/
 cmake-build-*/
 
+logs/
+
 .vscode/
 .idea/
 

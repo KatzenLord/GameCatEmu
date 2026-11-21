@@ -43,15 +43,11 @@ uint8_t Bus::read8(const uint16_t address) const {
         // STAT
         return static_cast<uint8_t>((io[0x41] & 0xFC) | (ppuMode & 0x03));
     }
-    if (address <= 0x7FFF) {
+    if (address <= 0x7FFF || (address >= 0xA000 && address <= 0xBFFF)) {
         return cartridge.read(address);
     }
     if (address >= 0x8000 && address <= 0x9FFF) {
         return vram[address - 0x8000];
-    }
-    if (address >= 0xA000 && address <= 0xBFFF) {
-        // TODO CARTRIDGE RAM
-        return 0xFF;
     }
     if (address >= 0xC000 && address <= 0xDFFF) {
         return wram[address - 0xC000];
@@ -129,16 +125,12 @@ void Bus::write8(uint16_t address, uint8_t data) {
         ly = 0;
         return;
     }
-    if (address <= 0x7FFF) {
+    if (address <= 0x7FFF || (address >= 0xA000 && address <= 0xBFFF)) {
         cartridge.write(address, data);
         return;
     }
     if (address >= 0x8000 && address <= 0x9FFF) {
         vram[address - 0x8000] = data;
-        return;
-    }
-    if (address >= 0xA000 && address <= 0xBFFF) {
-        // TODO CARTRIDGE RAM
         return;
     }
     if (address >= 0xC000 && address <= 0xDFFF) {
